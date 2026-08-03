@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>VE5 — 资产配置画像</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #050a14;
+  --bg-surface: #0b1321;
+  --bg-elevated: #111d2e;
+  --border-subtle: rgba(148,163,184,0.06);
+  --border-active: rgba(99,102,241,0.35);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-cyan: #22d3ee;
+  --accent-indigo: #6366f1;
+  --accent-emerald: #34d399;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-red: #c41e3a;
+  --radius-md: 14px;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  min-height: 100%; font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  background: var(--bg-deep); color: var(--text-primary);
+}
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image: linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+  background-size: 60px 60px; pointer-events: none; z-index: 0;
+}
+.app { max-width: 1000px; margin: 0 auto; padding: 40px 24px; position: relative; z-index: 1; }
+
+/* Header */
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+.header h1 { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+.header h1::before { content: ''; width: 4px; height: 24px; background: linear-gradient(180deg, var(--accent-indigo), var(--accent-cyan)); border-radius: 2px; }
+.back-link { color: var(--accent-indigo); text-decoration: none; font-size: 13px; font-weight: 500; }
+.back-link:hover { color: var(--accent-cyan); }
+
+/* Intro */
+.intro {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 32px; max-width: 700px;
+}
+.intro strong { color: var(--text-primary); }
+
+/* Tooltip trigger */
+.tip-wrap { position: relative; display: inline-flex; align-items: center; gap: 2px; }
+.tip-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(99,102,241,0.15); color: var(--accent-indigo);
+  font-size: 9px; font-weight: 700; cursor: help;
+  flex-shrink: 0; line-height: 1;
+}
+.tip-box {
+  display: none; position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  z-index: 100; min-width: 200px; max-width: 280px;
+  padding: 12px 14px; border-radius: 10px;
+  background: var(--bg-elevated); border: 1px solid var(--border-active);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+  pointer-events: none;
+}
+.tip-wrap:hover .tip-box,
+.tip-wrap:focus-within .tip-box { display: block; }
+
+/* Matrix */
+.matrix-title {
+  font-size: 16px; font-weight: 700; color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.matrix-subtitle {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 24px;
+}
+
+.matrix-container {
+  display: grid;
+  grid-template-columns: 120px 1fr 1fr 1fr;
+  grid-template-rows: auto repeat(3, 1fr);
+  gap: 0;
+  border: 1px dashed rgba(148,163,184,0.15);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 32px;
+}
+
+/* Corner cell */
+.matrix-corner {
+  background: rgba(255,255,255,0.02);
+  display: flex; align-items: center; justify-content: center;
+  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  padding: 16px;
+}
+
+/* Row header (risk preference) */
+.matrix-row-header {
+  display: flex; align-items: center; justify-content: center;
+  padding: 12px 8px;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  text-align: center;
+  background: rgba(255,255,255,0.015);
+}
+
+/* Column header (wealth stage) */
+.matrix-col-header {
+  display: flex; align-items: center; justify-content: center;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  text-align: center;
+  background: rgba(255,255,255,0.015);
+}
+
+/* Matrix cell */
+.matrix-cell {
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 16px 12px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  background: rgba(255,255,255,0.01);
+}
+.matrix-cell:last-child { border-right: none; }
+.matrix-cell:hover {
+  background: rgba(99,102,241,0.06);
+  box-shadow: inset 0 0 0 1px rgba(99,102,241,0.15);
+}
+.matrix-cell.selected {
+  background: rgba(99,102,241,0.12);
+  box-shadow: inset 0 0 0 2px var(--accent-indigo);
+}
+.matrix-cell.selected::after {
+  content: '✓'; position: absolute; top: 6px; right: 8px;
+  font-size: 12px; color: var(--accent-emerald); font-weight: 700;
+}
+
+.cell-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 0; font-size: 12px;
+}
+.cell-label { color: var(--text-secondary); }
+.cell-value { font-family: var(--mono); font-weight: 700; font-size: 14px; }
+.cell-value.aggressive { color: var(--accent-indigo); }
+.cell-value.stable { color: var(--accent-emerald); }
+
+/* Custom ratio section */
+.custom-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  margin-bottom: 32px;
+}
+.custom-title {
+  font-size: 14px; font-weight: 600; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.custom-title::before { content: ''; width: 3px; height: 16px; background: linear-gradient(180deg, var(--accent-indigo), var(--accent-cyan)); border-radius: 2px; }
+.custom-inputs {
+  display: flex; gap: 20px; align-items: center; flex-wrap: wrap;
+}
+.input-group {
+  display: flex; align-items: center; gap: 8px;
+}
+.input-group label { font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
+.input-group input {
+  width: 80px; padding: 8px 12px; border-radius: 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+  color: var(--text-primary); font-size: 14px; font-family: var(--mono);
+  text-align: center;
+  transition: all 0.2s;
+}
+.input-group input:focus {
+  outline: none; border-color: var(--accent-indigo);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+.input-sep { font-size: 18px; color: var(--text-muted); font-weight: 700; }
+.input-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+
+/* Summary card */
+.summary-card {
+  background: linear-gradient(180deg, var(--bg-elevated), rgba(13,20,33,0.95));
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  padding: 28px; position: relative; overflow: hidden; margin-bottom: 32px;
+}
+.summary-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(99,102,241,0.18), transparent); }
+.summary-header { font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+.summary-header::before { content: ''; width: 3px; height: 16px; background: linear-gradient(180deg, var(--accent-indigo), var(--accent-cyan)); border-radius: 2px; }
+.summary-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+}
+.summary-item {
+  text-align: center; padding: 16px; border-radius: 10px;
+  background: rgba(255,255,255,0.015);
+}
+.summary-item .label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.summary-item .value { font-size: 24px; font-weight: 800; font-family: var(--mono); }
+.summary-item .desc { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.summary-item.liquid .value { color: var(--accent-cyan); }
+.summary-item.aggressive .value { color: var(--accent-indigo); }
+.summary-item.stable .value { color: var(--accent-emerald); }
+
+/* Buttons */
+.btn-row { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+.btn {
+  padding: 10px 24px; border-radius: 10px; border: none;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-indigo), #8b5cf6);
+  color: white; box-shadow: 0 4px 16px rgba(99,102,241,0.25);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(99,102,241,0.35); }
+.btn-secondary {
+  background: transparent; color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+}
+.btn-secondary:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* Note */
+.note {
+  font-size: 11px; color: var(--text-muted); line-height: 1.6;
+  padding: 14px 18px; border-radius: 10px;
+  background: rgba(99,102,241,0.04); border: 1px solid rgba(99,102,241,0.08);
+  margin-top: 20px;
+}
+
+/* Preview Card Grid */
+.preview-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+.pv-card {
+  border-radius: 10px; padding: 16px 18px;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s;
+}
+.pv-card:hover { background: rgba(255,255,255,0.03); border-color: rgba(99,102,241,0.1); }
+.pv-card-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.pv-card-cat {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+}
+.pv-card-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.pv-card-note { font-size: 10px; color: var(--text-muted); }
+.pv-card-body {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.pv-col {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.pv-col-label {
+  font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px;
+}
+.pv-col-amt {
+  font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--text-primary);
+}
+.pv-col-ratio {
+  font-family: var(--mono); font-size: 12px; color: var(--text-muted); font-weight: 500;
+}
+.pv-card.stable .pv-col-amt.rec { color: var(--accent-emerald); }
+.pv-card.aggressive .pv-col-amt.rec { color: var(--accent-indigo); }
+.pv-card.liquid .pv-card-dot { background: var(--accent-cyan); box-shadow: 0 0 6px var(--accent-cyan); }
+.pv-card.aggressive .pv-card-dot { background: var(--accent-indigo); box-shadow: 0 0 6px var(--accent-indigo); }
+.pv-card.stable .pv-card-dot { background: var(--accent-emerald); box-shadow: 0 0 6px var(--accent-emerald); }
+.pv-card.protection .pv-card-dot { background: var(--accent-amber); box-shadow: 0 0 6px var(--accent-amber); }
+
+/* Current selection badge */
+.current-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 6px;
+  font-size: 11px; font-weight: 600;
+  background: rgba(34,211,238,0.1); color: var(--accent-cyan);
+  border: 1px solid rgba(34,211,238,0.15);
+}
+
+@media (max-width: 700px) {
+  .matrix-container {
+    grid-template-columns: 90px 1fr 1fr 1fr;
+    font-size: 11px;
+  }
+  .summary-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="app">
+
+  <div class="header">
+    <h1>资产配置画像</h1>
+    <a href="index.html" class="back-link">← 返回财务中枢</a>
+  </div>
+
+  <div class="intro">
+    以下比例仅作用于<strong>投资类资金</strong>（总资产 − 流动类 − 保障类）。
+  </div>
+
+  <!-- Matrix -->
+  <div class="matrix-title">选择您的投资类资金资产配置战略框架</div>
+  <div class="matrix-subtitle">提供标准化九宫格画像，根据财富阶段与风险偏好提供标准化方案，或通过自定义比例进行调整</div>
+
+  <div class="matrix-container" id="matrixGrid">
+    <!-- Corner -->
+    <div class="matrix-corner"></div>
+    <!-- Column headers -->
+    <div class="matrix-col-header">
+      <span class="tip-wrap">财富播种<span class="tip-icon">i</span><span class="tip-box">每年有少量资金结余，积累较少</span></span>
+    </div>
+    <div class="matrix-col-header">
+      <span class="tip-wrap">财富积累<span class="tip-icon">i</span><span class="tip-box">有较高的年度资金结余率，且财富积累快速增长</span></span>
+    </div>
+    <div class="matrix-col-header">
+      <span class="tip-wrap">财富保值<span class="tip-icon">i</span><span class="tip-box">劳动收入锐减，但有较多财富积累，财富管理收入成为重要收入来源且相对追求稳定</span></span>
+    </div>
+    <!-- Row 1: Low risk -->
+    <div class="matrix-row-header">
+      <span class="tip-wrap">风险偏好 · 低<span class="tip-icon" style="margin-top:2px;">i</span><span class="tip-box">以本金安全为首要目标，可接受较小波动，追求稳健收益</span></span>
+    </div>
+    <div class="matrix-cell" data-risk="low" data-stage="seeding" data-agg="15" data-stb="85">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">15%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">85%</span></div>
+    </div>
+    <div class="matrix-cell" data-risk="low" data-stage="accumulation" data-agg="25" data-stb="75">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">25%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">75%</span></div>
+    </div>
+    <div class="matrix-cell" data-risk="low" data-stage="preservation" data-agg="10" data-stb="90">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">10%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">90%</span></div>
+    </div>
+    <!-- Row 2: Medium risk -->
+    <div class="matrix-row-header">
+      <span class="tip-wrap">风险偏好 · 中<span class="tip-icon" style="margin-top:2px;">i</span><span class="tip-box">在追求收益与风险控制之间寻求平衡，可接受适度波动</span></span>
+    </div>
+    <div class="matrix-cell" data-risk="medium" data-stage="seeding" data-agg="25" data-stb="75">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">25%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">75%</span></div>
+    </div>
+    <div class="matrix-cell" data-risk="medium" data-stage="accumulation" data-agg="40" data-stb="60">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">40%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">60%</span></div>
+    </div>
+    <div class="matrix-cell" data-risk="medium" data-stage="preservation" data-agg="20" data-stb="80">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">20%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">80%</span></div>
+    </div>
+    <!-- Row 3: High risk -->
+    <div class="matrix-row-header">
+      <span class="tip-wrap">风险偏好 · 高<span class="tip-icon" style="margin-top:2px;">i</span><span class="tip-box">可承受较大市场波动，愿意承担较高风险以追求更高收益</span></span>
+    </div>
+    <div class="matrix-cell" data-risk="high" data-stage="seeding" data-agg="50" data-stb="50">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">50%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">50%</span></div>
+    </div>
+    <div class="matrix-cell" data-risk="high" data-stage="accumulation" data-agg="70" data-stb="30">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">70%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">30%</span></div>
+    </div>
+    <div class="matrix-cell" data-risk="high" data-stage="preservation" data-agg="60" data-stb="40">
+      <div class="cell-row"><span class="cell-label">进取投资</span><span class="cell-value aggressive">60%</span></div>
+      <div class="cell-row"><span class="cell-label">稳健投资</span><span class="cell-value stable">40%</span></div>
+    </div>
+  </div>
+
+  <!-- Custom Ratio -->
+  <div class="custom-section">
+    <div class="custom-title">自定义比例 <span class="current-badge" id="currentBadge" style="display:none;">已选模板</span></div>
+    <div class="custom-inputs">
+      <div class="input-group">
+        <label>进取投资</label>
+        <input type="number" id="customAggressive" min="0" max="100" step="5" value="0">
+        <span style="color:var(--text-muted);">%</span>
+      </div>
+      <span class="input-sep">+</span>
+      <div class="input-group">
+        <label>稳健投资</label>
+        <input type="number" id="customStable" min="0" max="100" step="5" value="0">
+        <span style="color:var(--text-muted);">%</span>
+      </div>
+      <span class="input-sep">=</span>
+      <div class="input-group">
+        <label>合计</label>
+        <input type="number" id="customTotal" value="100" readonly
+          style="border-color:transparent; background:transparent; cursor:default;">
+        <span style="color:var(--text-muted);">%</span>
+      </div>
+    </div>
+    <div class="input-hint">点击上方九宫格选择模板自动填入，或直接手动输入自定义比例（两项合计须为 100%）</div>
+  </div>
+
+  <!-- Preview -->
+  <div class="summary-card" id="summaryCard">
+    <div class="summary-header">
+      配置方案预览
+      <span style="font-size:11px; color:var(--text-muted); font-weight:400; margin-left:auto;">
+        总资产 <span id="previewTotalAssets" style="font-family:var(--mono); color:var(--text-primary);">--</span>
+      </span>
+    </div>
+
+    <div class="preview-grid" id="previewGrid">
+      <div style="text-align:center; color:var(--text-muted); padding:32px 0; grid-column:1/-1;">
+        <div class="spinner" style="width:24px;height:24px;border:2px solid var(--border-subtle);border-top-color:var(--accent-indigo);border-radius:50%;animation:spin 0.6s linear infinite;margin:0 auto 12px;"></div>
+        正在生成配置方案...
+      </div>
+    </div>
+
+    <div style="font-size:10px; color:var(--text-muted); margin-top:12px; line-height:1.5;">
+      占比基数 = 可投资金额（总资产 - 流动类 - 保障类），流动类与保障类不参与比例分配。
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnSave" onclick="ve4_profile_save()">保存画像配置</button>
+      <button class="btn btn-secondary" id="btnReset" onclick="ve4_profile_reset()">清除配置</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API_BASE = '';
+// file:// 协议下也没有 port，也需要指向 localhost
+// VE5 desktop is always served from the private local API origin.
+
+/* ─── VE5 Session Token ─── */
+let _ve5_token = '';
+(function extractToken() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('ve5_token');
+    if (t) {
+      _ve5_token = t;
+      const u = new URL(window.location.href);
+      u.searchParams.delete('ve5_token');
+      window.history.replaceState({}, '', u.pathname);
+      return;
+    }
+  } catch(e) {}
+  const m = document.cookie.match(/ve5_session_token=([^;]+)/);
+  if (m) _ve5_token = m[1];
+})();
+
+function ve5_fetch(url, options = {}) {
+  let tsUrl = url;
+  if (!url.includes('_t=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    tsUrl = url + sep + '_t=' + Date.now();
+  }
+  if (_ve5_token && tsUrl.startsWith('/')) {
+    options.headers = options.headers || {};
+    options.headers['x-ve5-token'] = _ve5_token;
+  }
+  return fetch(tsUrl, options);
+}
+
+let selectedCell = null;
+
+/* ─── Matrix Cell Click ─── */
+document.querySelectorAll('.matrix-cell').forEach(cell => {
+  cell.addEventListener('click', () => {
+    document.querySelectorAll('.matrix-cell.selected').forEach(c => c.classList.remove('selected'));
+    cell.classList.add('selected');
+    selectedCell = cell;
+
+    const agg = parseInt(cell.dataset.agg);
+    const stb = parseInt(cell.dataset.stb);
+    document.getElementById('customAggressive').value = agg;
+    document.getElementById('customStable').value = stb;
+    document.getElementById('customTotal').value = agg + stb;
+
+    const badge = document.getElementById('currentBadge');
+    badge.style.display = 'inline-flex';
+    badge.textContent = '已选模板';
+
+    ve4_profile_updateSummary();
+  });
+});
+
+/* ─── Custom Input Change ─── */
+['customAggressive', 'customStable'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    const a = parseInt(document.getElementById('customAggressive').value) || 0;
+    const s = parseInt(document.getElementById('customStable').value) || 0;
+    const t = a + s;
+    document.getElementById('customTotal').value = t;
+
+    if (t !== 100) {
+      document.getElementById('customTotal').style.color = 'var(--accent-rose)';
+    } else {
+      document.getElementById('customTotal').style.color = '';
+    }
+
+    // Deselect matrix cells since user is customizing
+    document.querySelectorAll('.matrix-cell.selected').forEach(c => c.classList.remove('selected'));
+    const badge = document.getElementById('currentBadge');
+    badge.style.display = 'inline-flex';
+    badge.textContent = t === 100 ? '自定义' : '合计≠100%';
+
+    ve4_profile_updateSummary();
+  });
+});
+
+/* ─── Real holdings cache ─── */
+let ve4_realHoldings = null;
+
+async function ve4_profile_loadHoldings() {
+  try {
+    const res = await ve5_fetch(`${API_BASE}/api/v1/allocation/detail`);
+    if (!res.ok) { ve4_profile_updateSummary(); return; }
+    const data = await res.json();
+    if (data.error) { ve4_profile_updateSummary(); return; }
+    ve4_realHoldings = data;
+    ve4_profile_updateSummary();
+  } catch (e) {
+    ve4_profile_updateSummary();
+  }
+}
+
+/* ─── Format currency ─── */
+function ve4_fmt(n) {
+  return '¥' + Math.round(n || 0).toLocaleString();
+}
+
+/* ─── Update Summary (real vs recommended) ─── */
+function ve4_profile_updateSummary() {
+  const aggPct = parseInt(document.getElementById('customAggressive').value) || 0;
+  const stbPct = parseInt(document.getElementById('customStable').value) || 0;
+  const valid = (aggPct + stbPct) === 100;
+
+  document.getElementById('btnSave').disabled = !valid;
+  document.getElementById('customTotal').style.color = !valid ? 'var(--accent-rose)' : '';
+
+  const tbody = document.getElementById('previewBody');
+  const grid = document.getElementById('previewGrid');
+  if (!ve4_realHoldings || !ve4_realHoldings.groups) {
+    grid.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:32px 0; grid-column:1/-1;">暂无持仓数据，请先导入资产截图</div>';
+    return;
+  }
+
+  // Update total assets in header
+  const totalEl = document.getElementById('previewTotalAssets');
+  if (totalEl) totalEl.textContent = ve4_fmt(ve4_realHoldings.total_classified || 0);
+
+  const groups = {};
+  (ve4_realHoldings.groups || []).forEach(g => groups[g.key] = g);
+  const liquid = groups['liquid']?.total_value || 0;
+  const aggressive = groups['aggressive']?.total_value || 0;
+  const stable = groups['stable']?.total_value || 0;
+  const protection = groups['protection']?.total_value || 0;
+
+  const lb = ve4_realHoldings.liquid_breakdown || {};
+  // 可投资金额 = 总资产 - 流动类 - 保障类（流动/保障是已确定的资金）
+  const totalAssets = liquid + aggressive + stable + protection;
+  const investable = Math.max(totalAssets - liquid - protection, 0);
+
+  const curAggRatio = investable > 0 ? (aggressive / investable * 100) : 0;
+  const curStbRatio = investable > 0 ? (stable / investable * 100) : 0;
+  const recAggressive = valid ? investable * aggPct / 100 : 0;
+  const recStable = valid ? investable * stbPct / 100 : 0;
+
+  const cards = [
+    { key: 'liquid', cat: '流动类', note: '生活必需+其它流动',
+      cur: liquid, curR: null, rec: lb.daily_reserve || null, recR: null },
+    { key: 'aggressive', cat: '进取类', note: '',
+      cur: aggressive, curR: curAggRatio, rec: recAggressive, recR: valid ? aggPct : null },
+    { key: 'stable', cat: '稳健类', note: '',
+      cur: stable, curR: curStbRatio, rec: recStable, recR: valid ? stbPct : null },
+    { key: 'protection', cat: '保障类', note: '贵金属+保险',
+      cur: protection, curR: null, rec: null, recR: null },
+    ];
+
+  let html = '';
+  cards.forEach(c => {
+    const crStr = c.curR != null ? c.curR.toFixed(1) + '%' : '';
+    const rrStr = c.recR != null ? c.recR + '%' : '';
+    const recAmtClass = c.rec != null ? 'rec' : '';
+    html += `<div class="pv-card ${c.key}">
+      <div class="pv-card-top">
+        <span class="pv-card-cat"><span class="pv-card-dot"></span>${c.cat}</span>
+        ${c.note ? `<span class="pv-card-note">${c.note}</span>` : ''}
+      </div>
+      <div class="pv-card-body">
+        <div class="pv-col">
+          <span class="pv-col-label">当前</span>
+          <span class="pv-col-amt">${ve4_fmt(c.cur)}</span>
+          ${crStr ? `<span class="pv-col-ratio">${crStr}</span>` : ''}
+        </div>
+        <div class="pv-col">
+          <span class="pv-col-label">推荐</span>
+          <span class="pv-col-amt ${recAmtClass}">${c.rec != null ? ve4_fmt(c.rec) : '—'}</span>
+          ${rrStr ? `<span class="pv-col-ratio">${rrStr}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  grid.innerHTML = html;
+}
+
+/* ─── Save Profile ─── */
+async function ve4_profile_save() {
+  const agg = parseInt(document.getElementById('customAggressive').value) || 0;
+  const stb = parseInt(document.getElementById('customStable').value) || 0;
+  if (agg + stb !== 100) {
+    alert('进取投资 + 稳健投资 合计必须为 100%');
+    return;
+  }
+
+  const payload = {
+    aggressive_pct: agg,
+    stable_pct: stb,
+    source: selectedCell
+      ? { risk: selectedCell.dataset.risk, stage: selectedCell.dataset.stage }
+      : { risk: 'custom', stage: 'custom' },
+    updated_at: new Date().toISOString(),
+  };
+
+  try {
+    const res = await ve5_fetch(`${API_BASE}/api/v1/allocation/profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) {
+      alert('保存失败: ' + data.error);
+    } else {
+      const btn = document.getElementById('btnSave');
+      btn.textContent = '已保存';
+      btn.style.background = 'linear-gradient(135deg, var(--accent-emerald), #10b981)';
+      setTimeout(() => { btn.textContent = '保存画像配置'; btn.style.background = ''; }, 2000);
+    }
+  } catch (e) {
+    alert('保存失败: ' + e.message);
+  }
+}
+
+/* ─── Reset Profile ─── */
+async function ve4_profile_reset() {
+  if (!confirm('确定要清除已保存的配置画像吗？')) return;
+  try {
+    await ve5_fetch(`${API_BASE}/api/v1/allocation/profile`, { method: 'DELETE' });
+    document.getElementById('customAggressive').value = 40;
+    document.getElementById('customStable').value = 60;
+    document.getElementById('customTotal').value = 100;
+    document.getElementById('customTotal').style.color = '';
+    document.querySelectorAll('.matrix-cell.selected').forEach(c => c.classList.remove('selected'));
+    document.getElementById('currentBadge').style.display = 'none';
+    ve4_profile_updateSummary();
+  } catch (e) {
+    alert('清除失败: ' + e.message);
+  }
+}
+
+/* ─── Load Existing Profile ─── */
+async function ve4_profile_load() {
+  try {
+    const res = await ve5_fetch(`${API_BASE}/api/v1/allocation/profile`);
+    if (!res.ok) {
+      _setDefaultSliders();
+      return;
+    }
+    const data = await res.json();
+
+    if (data.error || data.aggressive_pct == null) {
+      _setDefaultSliders();
+      return;
+    }
+
+    document.getElementById('customAggressive').value = data.aggressive_pct;
+    document.getElementById('customStable').value = data.stable_pct || (100 - data.aggressive_pct);
+    document.getElementById('customTotal').value = 100;
+    document.getElementById('customTotal').style.color = '';
+
+    // Try to highlight matching matrix cell
+    if (data.source && data.source.risk !== 'custom') {
+      const cells = document.querySelectorAll('.matrix-cell');
+      cells.forEach(c => {
+        if (c.dataset.risk === data.source.risk && c.dataset.stage === data.source.stage) {
+          c.classList.add('selected');
+          selectedCell = c;
+        }
+      });
+      document.getElementById('currentBadge').style.display = 'inline-flex';
+      document.getElementById('currentBadge').textContent = '已保存画像';
+    } else {
+      document.getElementById('currentBadge').style.display = 'inline-flex';
+      document.getElementById('currentBadge').textContent = '自定义';
+    }
+  } catch (e) {
+    _setDefaultSliders();
+  }
+}
+
+function _setDefaultSliders() {
+  document.getElementById('customAggressive').value = 40;
+  document.getElementById('customStable').value = 60;
+  document.getElementById('customTotal').value = 100;
+  document.getElementById('customTotal').style.color = '';
+}
+
+// ── VE5 服务检测 + 一键启动 ──
+let _ve5ApiOnline=false;
+async function _ve5Check(){try{const r=await fetch(`${API_BASE}/health`,{signal:AbortSignal.timeout(3000)});_ve5ApiOnline=r.ok}catch{_ve5ApiOnline=false}}
+function _ve4Banner(){if(_ve5ApiOnline||document.getElementById('ve4OfflineBanner'))return;const b=document.createElement('div');b.id='ve4OfflineBanner';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 20px;background:linear-gradient(90deg,rgba(244,63,94,0.12),rgba(99,102,241,0.08));border-bottom:1px solid rgba(244,63,94,0.2);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;gap:14px;font-size:13px;';b.innerHTML='<span style="color:var(--accent-rose);font-weight:700">API 未连接</span><span style="color:var(--text-secondary)">VE4 服务未启动</span><button id="ve4BtnStart" onclick="_ve4Launch()" style="padding:7px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:13px;font-weight:600;cursor:pointer">一键启动</button><button onclick="this.parentElement.remove()" style="padding:5px 10px;border-radius:6px;border:1px solid #ddd;background:transparent;color:#888;font-size:12px;cursor:pointer">忽略</button>';document.body.prepend(b)}
+async function _ve4Launch(){const b=document.getElementById('ve4OfflineBanner'),btn=document.getElementById('ve4BtnStart');if(btn){btn.disabled=true;btn.textContent='启动中...';btn.style.opacity='0.6'}try{const w=window.open('ve4://start','_blank','width=1,height=1');if(w)setTimeout(()=>{try{w.close()}catch(e){}},3000)}catch(e){}for(let i=1;i<=20;i++){await new Promise(r=>setTimeout(r,1000));if(btn)btn.textContent=`启动中... ${20-i}s`}window.location.href='/pwa/allocation-profile.html'}
+
+// Init
+(async function() {
+  // 从 referrer 中提取 token（如果是通过 index.html 链接打开的）
+  try {
+    const ref = document.referrer;
+    if (ref && !_ve5_token) {
+      const rParams = new URL(ref).searchParams;
+      const t = rParams.get('ve5_token');
+      if (t) _ve5_token = t;
+    }
+  } catch(e) {}
+  // 不阻塞等待 _ve5Check，直接加载数据
+  _ve5Check();
+  await ve4_profile_load();
+  await ve4_profile_loadHoldings();
+  _ve5Banner();
+})();
+
+window.addEventListener('load', () => {
+  // ─── 全局防缓存：拦截所有页面内 <a> 跳转，自动附加时间戳 ───
+  document.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && href.endsWith('.html') && !href.includes('_t=')) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const sep = href.includes('?') ? '&' : '?';
+        window.location.href = href + sep + '_t=' + Date.now();
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>

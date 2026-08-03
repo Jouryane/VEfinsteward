@@ -1,0 +1,107 @@
+# VE4 AI 提供商配置
+# ===================
+# 本文件集中配置所有 AI 服务提供商，包括本地模型和云端模型。
+# 优先级：数值越小优先级越高。
+# 隐私规则：含敏感数据的任务强制本地，不可回退云端。
+
+# 可用 provider 类型：
+#   - ollama: 本地 Ollama 服务（推荐用于 qwen2:1.5b 等轻量模型）
+#   - openai_compatible: OpenAI 兼容格式 API（Trae Work / OpenAI / 第三方）
+
+# 推理模型支持：
+#   is_reasoning_model: true  — 标记为推理模型（DeepSeek-R1, QwQ, o1等）
+#   reasoning_reserve: 4096   — 推理预留 token（实际 max_tokens = max_tokens + reserve）
+#   推理模型自动检测：模型名包含 deepseek-reasoner/deepseek-r1/o1/o3/qwq/reasoner/thinking 时自动标记
+#   用户在设置中配置的模型也会自动检测
+
+# 路由规则条件：
+#   - contains_privacy_data: 任务是否包含敏感隐私数据
+#   - complexity: low / medium / high
+#   - default: 默认路由
+
+providers:
+  # 本地模型 Alpha（隐私优先，轻量模型）
+  local_alpha:
+    type: ollama
+    base_url: "http://localhost:11434"
+    model: "qwen2:1.5b"       # 文本任务用轻量模型
+    vision_model: "llava:7b"    # 视觉任务用视觉模型（需单独安装）
+    timeout: 10
+    max_tokens: 256
+    temperature: 0.1
+    priority: 1
+    cache_enabled: true
+    use_for:
+      - asset_classification
+      - liquidity_inference
+      - classification_helper
+      - yes_no_question
+      - text_summary
+      - question_generation
+      - vision_ocr              # 截图文字提取（需要 vision_model 支持）
+      - data_extraction         # 持仓/消费记录结构化提取（隐私数据，本地处理）
+      - tactical_analysis       # 战术分析（持仓相关，含隐私数据）
+      - tactical_backtest       # 回测结果分析（含收益数据）
+      - tactical_risk_assess    # 风险评估（含持仓信息）
+
+  # 云端模型 Beta（Trae Work / 第三方兼容 API）
+  cloud_beta:
+    type: openai_compatible
+    base_url: "https://api.trae.work/v1"
+    api_key: ${TRAEV4_CLOUD_API_KEY}  # 从环境变量读取，不硬编码
+    model: "gpt-4o-mini"       # 文本任务
+    vision_model: "gpt-4o-mini"  # 视觉任务（gpt-4o-mini 本身支持视觉）
+    timeout: 30
+    max_tokens: 1024
+    temperature: 0.3
+    priority: 2
+    cache_enabled: false
+    use_for:
+      - complex_analysis
+      - report_generation
+      - recommendation_smoothing
+      - semantic_extraction
+      - question_adaptive
+      - vision_ocr              # 截图文字提取（云端视觉模型）
+      - tactical_code_gen       # 策略代码生成（非隐私）
+      - tactical_report_parse   # 研报/新闻摘要（公开文档）
+      - tactical_sentiment      # 情绪分析（公开文本）
+      - experience_compile      # 经验脚本编译（基于 report 元数据）
+      - experience_edit         # 经验脚本编辑助手
+
+# 路由规则（按顺序匹配，第一个匹配生效）
+routing_rules:
+  # 规则 1：隐私数据强制本地
+  - condition: contains_privacy_data
+    provider: local_alpha
+    fallback: none             # none = 本地不可用时直接失败，不泄露数据给云端
+
+  # 规则 2：高复杂度非隐私 → 云端优先，回退本地
+  - condition: complexity == high and not contains_privacy
+    provider: cloud_beta
+    fallback: local_alpha
+
+  # 规则 3：中复杂度 → 本地优先，回退云端
+  - condition: complexity == medium and not contains_privacy
+    provider: local_alpha
+    fallback: cloud_beta
+
+  # 规则 4：低复杂度 → 本地，不回退
+  - condition: complexity == low
+    provider: local_alpha
+    fallback: none
+
+  # 默认规则
+  - condition: default
+    provider: local_alpha
+    fallback: cloud_beta
+
+# 默认参数
+defaults:
+  # 无风险利率（用于收益率分析）
+  risk_free_rate: 2.5
+  # 应急月数默认值
+  emergency_months_default: 3
+  # 应急月数范围
+  emergency_months_min: 1
+  emergency_months_max: 6

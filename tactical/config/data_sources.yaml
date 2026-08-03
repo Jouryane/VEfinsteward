@@ -1,0 +1,32 @@
+data_sources:
+  tushare:
+    name: Tushare Pro
+    description: A股数据接口
+    api_url: https://api.tushare.pro
+    token: ''
+    enabled: false
+  choice:
+    name: Choice 金融终端
+    description: 金融数据终端
+    api_url: https://api.choice.com
+    token: ''
+    enabled: false
+  wind:
+    name: 万得数据
+    description: 公开行情数据（无需密钥）
+    api_url: https://www.wind.com.cn
+    enabled: false
+    token: ''
+  local_file:
+    name: 本地数据
+    description: CSV/Excel 本地文件
+    enabled: false
+  other:
+    name: 其它
+    description: 自定义数据源
+    enabled: false
+knowledge:
+  fundamental_db: tactical/fundamental/knowledge/structured/fundamental.db
+  rag_collection: ve4_fundamental_rag
+  max_documents: 1000
+  confidence_threshold: 0.7

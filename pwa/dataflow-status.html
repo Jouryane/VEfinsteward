@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>VE5 — 数据流状态</title>
+<style>
+:root {
+  --bg-deep: #050a14; --bg-surface: #0b1321; --bg-elevated: #111d2e;
+  --bg-glass: rgba(17,29,46,0.75);
+  --text-primary: #e2e8f0; --text-secondary: #94a3b8; --text-muted: #64748b;
+  --accent-indigo: #6366f1; --accent-cyan: #22d3ee; --accent-emerald: #34d399;
+  --accent-amber: #f59e0b; --accent-rose: #f43f5e;
+  --success: #22c55e; --warning: #f59e0b; --error: #f43f5e;
+  --border-subtle: rgba(148,163,184,0.1);
+  --border-active: rgba(99,102,241,0.3);
+  --shadow-elevated: 0 16px 48px rgba(0,0,0,0.4);
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+  --mono: 'JetBrains Mono', 'Consolas', 'SF Mono', monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-deep); color: var(--text-primary);
+  min-height: 100vh;
+}
+.header {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 32px; height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header-left { display: flex; align-items: center; gap: 16px; }
+.brand-mark {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px; color: #fff;
+  position: relative; overflow: hidden;
+}
+.brand-mark::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.25), transparent 60%);
+}
+.header-title { font-size: 15px; font-weight: 700; }
+.header-back {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: var(--radius-sm);
+  background: rgba(99,102,241,0.08); color: var(--accent-indigo);
+  font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+}
+
+/* 统计卡片 */
+.stats-bar {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px;
+  padding: 20px 32px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.stat-card {
+  padding: 16px 20px; border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column;
+}
+.stat-card .stat-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 8px;
+}
+.stat-card .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+.stat-card .stat-value { font-size: 28px; font-weight: 700; font-family: var(--mono); }
+.stat-card .stat-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+.stat-card.pending .stat-value { color: var(--accent-amber); }
+.stat-card.processed .stat-value { color: var(--accent-emerald); }
+.stat-card.failed .stat-value { color: var(--accent-rose); }
+.stat-card.total .stat-value { color: var(--accent-cyan); }
+.stat-card.warn .stat-value { color: var(--accent-amber); }
+.stat-card.warn { border-color: rgba(245,158,11,0.2); }
+
+/* 筛选栏 */
+.filter-bar {
+  display: flex; gap: 8px; padding: 16px 32px;
+  flex-wrap: wrap; align-items: center;
+}
+.filter-bar .filter-label { font-size: 12px; color: var(--text-muted); margin-right: 8px; }
+.filter-btn {
+  padding: 6px 16px; border-radius: 20px;
+  border: 1px solid var(--border-subtle);
+  background: transparent; color: var(--text-secondary);
+  font-size: 12px; cursor: pointer; transition: all 0.2s;
+}
+.filter-btn:hover { border-color: var(--accent-indigo); color: var(--text-primary); }
+.filter-btn.active {
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(34,211,238,0.08));
+  border-color: var(--accent-indigo); color: var(--accent-cyan);
+}
+
+/* 表格 */
+.table-wrap { padding: 0 32px 32px; overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px;
+}
+thead th {
+  text-align: left; padding: 10px 12px;
+  font-weight: 600; font-size: 11px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+tbody td {
+  padding: 12px 12px;
+  border-bottom: 1px solid rgba(148,163,184,0.05);
+  vertical-align: middle;
+}
+tbody tr:hover { background: rgba(99,102,241,0.03); }
+tbody tr { transition: background 0.2s; }
+.badge {
+  display: inline-block; padding: 3px 10px; border-radius: 4px;
+  font-size: 11px; font-weight: 600;
+}
+.badge.pending { background: rgba(245,158,11,0.12); color: var(--accent-amber); }
+.badge.retained { background: rgba(52,211,153,0.12); color: var(--accent-emerald); }
+.badge.overwritten { background: rgba(99,102,241,0.12); color: var(--accent-indigo); }
+.badge.expired { background: rgba(244,63,94,0.12); color: var(--accent-rose); }
+.file-name { font-weight: 600; }
+.file-path { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+.file-size { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--text-muted);
+}
+.empty-state-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+
+/* 操作按钮 */
+.action-bar {
+  display: flex; gap: 12px; padding: 8px 32px 16px;
+  flex-wrap: wrap; align-items: center;
+}
+.btn-danger {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 20px; border-radius: var(--radius-sm);
+  border: 1px solid rgba(244,63,94,0.3);
+  background: rgba(244,63,94,0.08); color: var(--accent-rose);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-danger:hover {
+  background: rgba(244,63,94,0.18);
+  border-color: var(--accent-rose);
+}
+.btn-danger-sm {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border-radius: 4px;
+  border: 1px solid rgba(244,63,94,0.2);
+  background: transparent; color: var(--accent-rose);
+  font-size: 11px; cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-danger-sm:hover {
+  background: rgba(244,63,94,0.15);
+}
+.btn-retry-sm {
+  background: transparent; border: 1px solid rgba(245,158,11,0.3);
+  color: var(--accent-amber); padding: 3px 10px; border-radius: 6px;
+  font-size: 11px; cursor: pointer; margin-left: 4px;
+}
+.btn-retry-sm:hover { background: rgba(245,158,11,0.1); }
+.btn-refresh {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 20px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: transparent; color: var(--text-secondary);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-refresh:hover {
+  border-color: var(--accent-indigo); color: var(--text-primary);
+}
+
+/* 确认对话框 */
+.dialog-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  z-index: 1000; align-items: center; justify-content: center;
+}
+.dialog-overlay.active { display: flex; }
+.dialog-box {
+  background: var(--bg-surface); border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  padding: 28px 32px; max-width: 440px; width: 90%;
+  box-shadow: var(--shadow-elevated);
+}
+.dialog-title {
+  font-size: 16px; font-weight: 700; margin-bottom: 12px;
+}
+.dialog-body {
+  font-size: 14px; color: var(--text-secondary);
+  line-height: 1.6; margin-bottom: 24px;
+}
+.dialog-body .highlight {
+  color: var(--accent-rose); font-weight: 600;
+}
+.dialog-body code {
+  font-family: var(--mono); background: rgba(0,0,0,0.2);
+  padding: 2px 6px; border-radius: 4px; font-size: 12px;
+}
+.dialog-actions {
+  display: flex; gap: 12px; justify-content: flex-end;
+}
+.dialog-btn {
+  padding: 8px 24px; border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+}
+.dialog-btn-cancel {
+  background: rgba(148,163,184,0.1); color: var(--text-secondary);
+}
+.dialog-btn-cancel:hover { background: rgba(148,163,184,0.2); }
+.dialog-btn-confirm {
+  background: var(--accent-rose); color: #fff;
+}
+.dialog-btn-confirm:hover { opacity: 0.9; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <div class="brand-mark">VE</div>
+    <span class="header-title">数据流状态</span>
+  </div>
+  <button class="header-back" onclick="goBack()">← 返回财务中枢</button>
+</div>
+
+<!-- 统计栏 -->
+<div class="stats-bar" id="statsBar">
+  <div class="stat-card total">
+    <div class="stat-top">
+      <span class="stat-label">文件总数</span>
+    </div>
+    <div class="stat-value" id="totalCount">—</div>
+    <div class="stat-hint">所有文件</div>
+  </div>
+  <div class="stat-card pending">
+    <div class="stat-top">
+      <span class="stat-label">待分析</span>
+    </div>
+    <div class="stat-value" id="pendingCount">—</div>
+    <div class="stat-hint">上传后尚未处理</div>
+  </div>
+  <div class="stat-card processed">
+    <div class="stat-top">
+      <span class="stat-label">已保留</span>
+    </div>
+    <div class="stat-value" id="retainedCount">—</div>
+    <div class="stat-hint">信息仍保留在数据库</div>
+  </div>
+  <div class="stat-card failed">
+    <div class="stat-top">
+      <span class="stat-label">已覆盖</span>
+    </div>
+    <div class="stat-value" id="overwrittenCount">—</div>
+    <div class="stat-hint">数据被后续更新覆盖</div>
+  </div>
+  <div class="stat-card failed">
+    <div class="stat-top">
+      <span class="stat-label">失效</span>
+    </div>
+    <div class="stat-value" id="expiredCount">—</div>
+    <div class="stat-hint">提取失败或格式失效</div>
+  </div>
+  <div class="stat-card warn">
+    <div class="stat-top">
+      <span class="stat-label">LLM超时</span>
+    </div>
+    <div class="stat-value" id="llmTimeoutCount">—</div>
+    <div class="stat-hint">处理失败，建议重试</div>
+  </div>
+</div>
+
+<!-- 筛选栏 -->
+<div class="filter-bar" id="filterBar">
+  <span class="filter-label">筛选:</span>
+  <button class="filter-btn active" data-filter="all">全部</button>
+  <button class="filter-btn" data-filter="pending">待分析</button>
+  <button class="filter-btn" data-filter="retained">已保留</button>
+  <button class="filter-btn" data-filter="overwritten">已覆盖</button>
+  <button class="filter-btn" data-filter="expired">失效</button>
+  <button class="filter-btn" data-filter="llm_timeout">LLM超时</button>
+</div>
+
+<!-- 操作栏 -->
+<div class="action-bar">
+  <button class="btn-refresh" onclick="loadData()">⟳ 刷新</button>
+  <button class="btn-danger" onclick="confirmClearAll()">🗑 清空所有数据</button>
+</div>
+
+<!-- 确认对话框 -->
+<div class="dialog-overlay" id="dialogOverlay">
+  <div class="dialog-box">
+    <div class="dialog-title" id="dialogTitle">确认操作</div>
+    <div class="dialog-body" id="dialogBody">确定要执行此操作吗？</div>
+    <div class="dialog-actions">
+      <button class="dialog-btn dialog-btn-cancel" onclick="closeDialog()">取消</button>
+      <button class="dialog-btn dialog-btn-confirm" id="dialogConfirmBtn" onclick="executeDialog()">确认删除</button>
+    </div>
+  </div>
+</div>
+
+<!-- 表格 -->
+<div class="table-wrap">
+  <table id="filesTable">
+    <thead>
+      <tr>
+        <th>文件名</th>
+        <th>状态</th>
+        <th>识别类型</th>
+        <th>大小</th>
+        <th>路径</th>
+        <th>处理时间</th>
+        <th>备注</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody id="filesBody">
+      <tr><td colspan="8"><div class="empty-state">正在加载...</div></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const VE4_API_BASE = window.location.origin;
+
+function getToken() {
+  const m = window.location.search.match(/ve5_token=([^&]+)/);
+  return m ? m[1] : null;
+}
+const TOKEN = getToken();
+
+async function ve5_fetch(url, opts = {}) {
+  let tsUrl = url;
+  if (!url.includes('_t=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    tsUrl = url + sep + '_t=' + Date.now();
+  }
+  const headers = { ...opts.headers };
+  if (TOKEN && !url.endsWith('/health') && !url.includes('/pwa/')) {
+    headers['x-ve5-token'] = TOKEN;
+  }
+  const res = await fetch(tsUrl, { ...opts, headers });
+  if (res.status === 401) throw new Error('Unauthorized');
+  return res;
+}
+
+function goBack() {
+  window.location.href = VE4_API_BASE + '/pwa/index.html' + (TOKEN ? '?ve5_token=' + TOKEN : '');
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(2) + ' MB';
+}
+
+let allFiles = [];
+
+async function loadData() {
+  try {
+    const r = await ve5_fetch(VE4_API_BASE + '/api/v1/sync/files');
+    const data = await r.json();
+    if (!data.success) throw new Error(data.error || '加载失败');
+
+    allFiles = data.files || [];
+    const stats = data.stats || {};
+
+    document.getElementById('totalCount').textContent = allFiles.length;
+    document.getElementById('pendingCount').textContent = stats.pending || 0;
+    document.getElementById('retainedCount').textContent = stats.retained || 0;
+    document.getElementById('overwrittenCount').textContent = stats.overwritten || 0;
+    document.getElementById('expiredCount').textContent = stats.expired || 0;
+    document.getElementById('llmTimeoutCount').textContent = stats.llm_timeout || 0;
+
+    renderTable('all');
+  } catch (e) {
+    document.getElementById('filesBody').innerHTML = `<tr><td colspan="8"><div class="empty-state">
+      <div class="empty-state-icon">⚠️</div>
+      <div>加载失败：${e.message}</div>
+    </div></td></tr>`;
+  }
+}
+
+function renderTable(filter) {
+  const body = document.getElementById('filesBody');
+  let filtered = allFiles;
+  if (filter !== 'all') {
+    filtered = allFiles.filter(f => f.status === filter);
+  }
+
+  if (filtered.length === 0) {
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+      <div class="empty-state-icon">📂</div>
+      <div>该分类下暂无文件</div>
+    </div></td></tr>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(f => {
+    const statusClass = f.status;
+    const statusLabel = f.status_label || f.status;
+    const note = f.detail || (f.status === 'pending' ? '等待同步处理' : '');
+    const canDelete = f.status === 'retained' || f.status === 'overwritten' || f.status === 'expired' || f.status === 'llm_timeout';
+    const safeName = f.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    let actionHtml = '';
+    if (canDelete) {
+      actionHtml += '<button class="btn-danger-sm" onclick="confirmDeleteFile(\'' + safeName + '\')">删除</button>';
+    }
+    if (f.status === 'llm_timeout' || f.status === 'expired') {
+      actionHtml += ' <button class="btn-retry-sm" onclick="retryFile(\'' + safeName + '\')">重试</button>';
+    }
+    if (!actionHtml) {
+      actionHtml = '<span style="color:var(--text-muted);font-size:11px;">—</span>';
+    }
+    // 推断识别类型
+    let typeLabel = '—';
+    let typeColor = 'var(--text-muted)';
+    if (f.detail) {
+      if (f.detail.includes('消费')) { typeLabel = '消费'; typeColor = 'var(--accent-rose)'; }
+      else if (f.detail.includes('收入')) { typeLabel = '收入'; typeColor = 'var(--accent-emerald)'; }
+      else if (f.detail.includes('持仓')) { typeLabel = '资产'; typeColor = 'var(--accent-cyan)'; }
+    }
+    return `<tr>
+      <td><span class="file-name">${f.name}</span></td>
+      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+      <td style="font-size:12px;font-weight:600;color:${typeColor}">${typeLabel}</td>
+      <td class="file-size">${fmtSize(f.size)}</td>
+      <td><span class="file-path">${f.path}</span></td>
+      <td style="font-size:12px;color:var(--text-secondary)">${f.processed_at || '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${note}</td>
+      <td>${actionHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+// 筛选切换
+document.getElementById('filterBar').addEventListener('click', function(e) {
+  if (e.target.classList.contains('filter-btn')) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    renderTable(e.target.dataset.filter);
+  }
+});
+
+// ─── 删除操作 ───
+let dialogCallback = null;
+let dialogMode = '';
+
+function closeDialog() {
+  document.getElementById('dialogOverlay').classList.remove('active');
+  dialogCallback = null;
+}
+
+function showDialog(title, body, confirmText, callback) {
+  document.getElementById('dialogTitle').textContent = title;
+  document.getElementById('dialogBody').innerHTML = body;
+  document.getElementById('dialogConfirmBtn').textContent = confirmText || '确认删除';
+  dialogCallback = callback;
+  document.getElementById('dialogOverlay').classList.add('active');
+}
+
+function executeDialog() {
+  if (dialogCallback) {
+    const btn = document.getElementById('dialogConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = '处理中...';
+    dialogCallback().finally(() => {
+      btn.disabled = false;
+      btn.textContent = '确认删除';
+      closeDialog();
+    });
+  }
+}
+
+function confirmClearAll() {
+  showDialog(
+    '清空所有数据',
+    `<p>此操作将<strong class="highlight">永久删除</strong>以下数据：</p>
+     <ul style="margin:8px 0 0 16px;padding:0;list-style:disc;">
+       <li>所有持仓记录（<code>asset_holdings</code>）</li>
+       <li>所有消费记录（<code>transactions</code>）</li>
+       <li>所有处理记录和 RAG 向量数据</li>
+     </ul>
+     <p style="margin-top:12px;">此操作<strong class="highlight">不可撤销</strong>，请确认。</p>`,
+    '确认清空全部',
+    async () => {
+      const r = await ve5_fetch(VE4_API_BASE + '/api/v1/sync/data?source=all', { method: 'DELETE' });
+      const data = await r.json();
+      if (!data.success) throw new Error(data.error);
+      await loadData();
+    }
+  );
+}
+
+function confirmDeleteFile(fileName) {
+  showDialog(
+    '删除文件数据',
+    `<p>将删除截图文件 <code>${fileName}</code> 产生的所有数据：</p>
+     <ul style="margin:8px 0 0 16px;padding:0;list-style:disc;">
+       <li>基于此截图提取的持仓记录</li>
+       <li>基于此截图提取的消费记录</li>
+       <li>相关的 RAG 向量数据</li>
+     </ul>
+     <p style="margin-top:12px;">此操作<strong class="highlight">不可撤销</strong>，请确认。</p>`,
+    '确认删除',
+    async () => {
+      const r = await ve5_fetch(VE4_API_BASE + '/api/v1/sync/data?file_name=' + encodeURIComponent(fileName), { method: 'DELETE' });
+      const data = await r.json();
+      if (!data.success) throw new Error(data.error);
+      await loadData();
+    }
+  );
+}
+
+async function retryFile(fileName) {
+  showDialog(
+    '重试处理',
+    '<p>将把截图 <code>' + fileName + '</code> 重新移入待处理队列，下次同步时自动重新处理。</p><p style="margin-top:8px;color:var(--text-muted);font-size:12px;">适用于之前因 LLM 超时或提取异常而失败的文件。</p>',
+    '确认重试',
+    async function() {
+      var r = await ve5_fetch(VE4_API_BASE + '/api/v1/sync/retry?file_name=' + encodeURIComponent(fileName), { method: 'POST' });
+      var data = await r.json();
+      if (data.success) {
+        closeDialog();
+        await loadData();
+      } else {
+        alert('重试失败: ' + (data.error || '未知错误'));
+      }
+    }
+  );
+}
+
+// 点击遮罩层关闭对话框
+document.getElementById('dialogOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeDialog();
+});
+
+loadData();
+
+window.addEventListener('load', () => {
+  // ─── 全局防缓存：拦截所有页面内 <a> 跳转，自动附加时间戳 ───
+  document.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && href.endsWith('.html') && !href.includes('_t=')) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const sep = href.includes('?') ? '&' : '?';
+        window.location.href = href + sep + '_t=' + Date.now();
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>

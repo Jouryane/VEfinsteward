@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>VE5 — 智能规划结果</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #050a14;
+  --bg-surface: #0b1321;
+  --bg-elevated: #111d2e;
+  --bg-glass: rgba(17,29,46,0.75);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-indigo: #6366f1;
+  --accent-cyan: #22d3ee;
+  --accent-emerald: #34d399;
+  --accent-rose: #f43f5e;
+  --accent-amber: #f59e0b;
+  --border-subtle: rgba(148,163,184,0.06);
+  --border-active: rgba(99,102,241,0.3);
+  --shadow-elevated: 0 12px 40px rgba(0,0,0,0.45);
+  --shadow-glow: 0 0 30px rgba(99,102,241,0.1);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  height: 100%;
+  font-family: 'Noto Sans SC', 'Inter', system-ui, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+/* ─── Background Grid ─── */
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none; z-index: 0;
+}
+
+/* ─── Page Container ─── */
+.page {
+  position: relative; z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+/* ─── Top Bar ─── */
+.top-bar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px;
+  background: rgba(5,10,20,0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.top-bar::after {
+  content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-indigo), transparent);
+  opacity: 0.3;
+}
+.btn-back {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: var(--radius-sm);
+  background: rgba(99,102,241,0.08);
+  border: 1px solid rgba(99,102,241,0.15);
+  color: var(--accent-indigo);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; white-space: nowrap;
+  font-family: inherit;
+}
+.btn-back:hover { background: rgba(99,102,241,0.16); border-color: rgba(99,102,241,0.3); }
+.btn-back svg { width: 16px; height: 16px; }
+.top-bar-title {
+  font-size: 16px; font-weight: 700; letter-spacing: -0.3px;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ─── Content ─── */
+.content { padding: 20px 16px 0; }
+
+/* ─── Loading Skeleton ─── */
+.loading-container {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 80px 20px; gap: 16px;
+}
+.loading-spinner {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid var(--bg-elevated);
+  border-top-color: var(--accent-indigo);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 13px; color: var(--text-muted); }
+
+/* ─── Error ─── */
+.error-container {
+  text-align: center; padding: 60px 20px;
+}
+.error-icon {
+  width: 48px; height: 48px; margin: 0 auto 16px; border-radius: 50%;
+  background: rgba(244,63,94,0.1);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent-rose); font-size: 22px;
+}
+.error-title { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+.error-desc { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+.btn-retry {
+  margin-top: 20px; padding: 10px 28px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--accent-indigo), rgba(99,102,241,0.8));
+  border: none; color: #fff; font-size: 13px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: opacity 0.2s;
+}
+.btn-retry:hover { opacity: 0.85; }
+
+/* ─── Glass Card ─── */
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  overflow: hidden;
+}
+
+/* ─── Budget Overview ─── */
+.budget-card {
+  padding: 24px; margin-bottom: 20px;
+}
+.budget-header {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px;
+}
+.budget-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.budget-value {
+  font-size: 32px; font-weight: 800; letter-spacing: -1px;
+  font-family: var(--mono);
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.budget-unit { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+.budget-subtitle {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 20px;
+}
+
+/* ─── Bar Chart ─── */
+.bar-chart { display: flex; flex-direction: column; gap: 14px; }
+.bar-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.bar-label {
+  width: 72px; flex-shrink: 0;
+  font-size: 12px; color: var(--text-secondary); text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bar-track {
+  flex: 1; height: 24px; border-radius: 6px;
+  background: rgba(255,255,255,0.04);
+  overflow: hidden; position: relative;
+}
+.bar-fill {
+  height: 100%; border-radius: 6px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+}
+.bar-fill::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+}
+.bar-amount {
+  width: 64px; flex-shrink: 0;
+  font-size: 12px; font-weight: 600; color: var(--text-primary);
+  text-align: right; font-family: var(--mono);
+}
+/* Bar colors */
+.bar-food { background: linear-gradient(90deg, var(--accent-emerald), rgba(52,211,153,0.7)); }
+.bar-daily { background: linear-gradient(90deg, var(--accent-cyan), rgba(34,211,238,0.7)); }
+.bar-fun { background: linear-gradient(90deg, var(--accent-amber), rgba(245,158,11,0.7)); }
+.bar-flex { background: linear-gradient(90deg, var(--accent-indigo), rgba(99,102,241,0.7)); }
+.bar-default { background: linear-gradient(90deg, var(--accent-violet, #a78bfa), rgba(167,139,250,0.7)); }
+
+/* ─── Tab Navigation ─── */
+.tab-nav {
+  display: flex; gap: 0; margin-bottom: 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+.tab-btn {
+  flex: 1; padding: 10px 8px; border: none;
+  background: transparent; color: var(--text-muted);
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.25s; font-family: inherit;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text-secondary); }
+.tab-btn.active {
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(34,211,238,0.08));
+  color: var(--accent-cyan);
+  box-shadow: 0 2px 12px rgba(99,102,241,0.15);
+}
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeUp 0.35s ease; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Recipe Table ─── */
+.recipe-card { padding: 0; overflow: hidden; }
+.recipe-card .card-title {
+  padding: 18px 20px 14px;
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.recipe-table {
+  width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 580px;
+}
+.recipe-table thead th {
+  padding: 12px 14px; text-align: left;
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.recipe-table thead th:first-child { padding-left: 20px; }
+.recipe-table thead th:last-child { text-align: right; padding-right: 20px; }
+.recipe-table tbody tr {
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background 0.2s;
+}
+.recipe-table tbody tr:nth-child(even) {
+  background: rgba(255,255,255,0.015);
+}
+.recipe-table tbody tr:hover {
+  background: rgba(99,102,241,0.04);
+}
+.recipe-table tbody tr.today-row {
+  background: rgba(99,102,241,0.08);
+  border-left: 3px solid var(--accent-indigo);
+}
+.recipe-table tbody tr.today-row td:first-child {
+  padding-left: 17px;
+}
+.recipe-table tbody td {
+  padding: 14px 14px; vertical-align: top;
+  color: var(--text-secondary); line-height: 1.6;
+}
+.recipe-table tbody td:first-child { padding-left: 20px; }
+.recipe-table tbody td:last-child {
+  text-align: right; padding-right: 20px;
+  font-family: var(--mono); font-weight: 600; color: var(--accent-cyan);
+  white-space: nowrap;
+}
+.day-cell {
+  font-weight: 700; color: var(--text-primary) !important;
+  white-space: nowrap; font-size: 13px;
+}
+.today-badge {
+  display: inline-block; margin-left: 6px;
+  padding: 1px 7px; border-radius: 10px; font-size: 10px;
+  background: rgba(99,102,241,0.2); color: var(--accent-indigo);
+  font-weight: 600; vertical-align: middle;
+}
+.meal-text { max-width: 140px; }
+
+/* ─── Shopping List ─── */
+.shop-card { padding: 0; overflow: hidden; }
+.shop-card .card-title {
+  padding: 18px 20px 8px;
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+}
+.shop-summary {
+  padding: 0 20px 14px; font-size: 11px; color: var(--text-muted);
+}
+.shop-category {
+  margin: 0 16px; padding: 14px 0 6px;
+  border-top: 1px solid var(--border-subtle);
+}
+.shop-category:first-of-type { border-top: none; margin-top: 0; }
+.shop-category-name {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 1px;
+  padding: 0 4px; margin-bottom: 8px;
+}
+.shop-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  transition: background 0.2s; cursor: pointer;
+}
+.shop-item:hover { background: rgba(255,255,255,0.03); }
+.shop-item.checked { opacity: 0.45; }
+.shop-item.checked .shop-item-name {
+  text-decoration: line-through; color: var(--text-muted);
+}
+.shop-checkbox {
+  width: 20px; height: 20px; flex-shrink: 0;
+  border: 2px solid var(--text-muted); border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; cursor: pointer;
+}
+.shop-item.checked .shop-checkbox {
+  background: var(--accent-indigo); border-color: var(--accent-indigo);
+}
+.shop-checkbox svg { width: 12px; height: 12px; opacity: 0; color: #fff; transition: opacity 0.2s; }
+.shop-item.checked .shop-checkbox svg { opacity: 1; }
+.shop-item-name { flex: 1; font-size: 13px; font-weight: 500; }
+.shop-item-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.priority-badge {
+  padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.3px;
+}
+.priority-high { background: rgba(52,211,153,0.12); color: var(--accent-emerald); }
+.priority-mid { background: rgba(245,158,11,0.12); color: var(--accent-amber); }
+.priority-low { background: rgba(100,116,139,0.15); color: var(--text-muted); }
+.shop-price {
+  font-size: 12px; font-weight: 600; font-family: var(--mono);
+  color: var(--text-secondary); min-width: 40px; text-align: right;
+}
+
+/* ─── Entertainment ─── */
+.fun-card { padding: 20px; }
+.fun-card .card-title {
+  font-size: 13px; font-weight: 600; color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.fun-list { display: flex; flex-direction: column; gap: 12px; }
+.fun-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px; border-radius: var(--radius-sm);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.25s;
+}
+.fun-item:hover {
+  background: rgba(99,102,241,0.04);
+  border-color: rgba(99,102,241,0.15);
+}
+.fun-icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+}
+.fun-icon.free { background: rgba(52,211,153,0.1); }
+.fun-icon.paid { background: rgba(245,158,11,0.1); }
+.fun-info { flex: 1; min-width: 0; }
+.fun-activity { font-size: 14px; font-weight: 600; margin-bottom: 3px; }
+.fun-reason { font-size: 12px; color: var(--text-muted); }
+.fun-meta { flex-shrink: 0; text-align: right; }
+.fun-day { font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-bottom: 2px; }
+.fun-budget { font-size: 13px; font-weight: 700; font-family: var(--mono); }
+.fun-budget.free { color: var(--accent-emerald); }
+.fun-budget.paid { color: var(--accent-amber); }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.12); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<div class="page">
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <button class="btn-back" onclick="history.back()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      返回
+    </button>
+    <div class="top-bar-title" id="pageTitle">本周生活规划</div>
+  </div>
+
+  <div class="content" id="mainContent">
+    <!-- Loading -->
+    <div class="loading-container" id="loadingView">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在加载规划数据...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── ve5_fetch: 带缓存击穿和鉴权的 fetch 封装 ─── */
+function ve5_fetch(url, options = {}) {
+  let tsUrl = url;
+  if (!url.includes('_t=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    tsUrl = url + sep + '_t=' + Date.now();
+  }
+  const m = window.location.href.match(/ve5_token=([a-zA-Z0-9_-]+)/);
+  if (m) {
+    options.headers = options.headers || {};
+    options.headers['x-ve5-token'] = m[1];
+  }
+  return fetch(tsUrl, options);
+}
+
+/* ─── URL Params ─── */
+const params = new URLSearchParams(window.location.search);
+const type = params.get('type') || 'life_plan';
+const reportId = params.get('report_id') || params.get('plan_id') || '';
+
+/* ─── Anti-cache link interception ─── */
+window.addEventListener('load', function() {
+  const tk = (window.location.href.match(/ve5_token=([a-zA-Z0-9_-]+)/) || [])[1] || '';
+  document.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && href.endsWith('.html') && !href.includes('_t=') && !href.startsWith('http')) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const sep = href.includes('?') ? '&' : '?';
+        const tokenParam = tk ? '&ve5_token=' + tk : '';
+        window.location.href = href + sep + '_t=' + Date.now() + tokenParam;
+      });
+    }
+  });
+});
+
+/* ─── Day mapping for "today" highlight ─── */
+const dayMap = {
+  '周一': 1, '周二': 2, '周三': 3, '周四': 4, '周五': 5, '周六': 6, '周日': 0
+};
+function getTodayKey() {
+  const jsDay = new Date().getDay();
+  for (const [k, v] of Object.entries(dayMap)) {
+    if (v === jsDay) return k;
+  }
+  return null;
+}
+
+/* ─── Bar color class by category name ─── */
+function getBarClass(name) {
+  if (name.includes('伙食') || name.includes('餐') || name.includes('食')) return 'bar-food';
+  if (name.includes('日用')) return 'bar-daily';
+  if (name.includes('娱乐') || name.includes('休闲') || name.includes('玩')) return 'bar-fun';
+  if (name.includes('机动') || name.includes('灵活') || name.includes('备用')) return 'bar-flex';
+  return 'bar-default';
+}
+
+/* ─── Priority class ─── */
+function getPriorityClass(p) {
+  if (p === '高') return 'priority-high';
+  if (p === '中') return 'priority-mid';
+  return 'priority-low';
+}
+
+/* ─── Render Budget Card ─── */
+function renderBudget(data) {
+  const budget = data.weekly_budget || 0;
+  const breakdown = data.budget_breakdown || {};
+  const total = Object.values(breakdown).reduce((s, v) => s + v, 0);
+  const maxVal = Math.max(...Object.values(breakdown), 1);
+
+  let barsHtml = '';
+  for (const [label, amount] of Object.entries(breakdown)) {
+    const pct = Math.round((amount / maxVal) * 100);
+    const cls = getBarClass(label);
+    barsHtml += `
+      <div class="bar-row">
+        <span class="bar-label">${label}</span>
+        <div class="bar-track">
+          <div class="bar-fill ${cls}" style="width:${pct}%"></div>
+        </div>
+        <span class="bar-amount">&yen;${amount}</span>
+      </div>`;
+  }
+
+  return `
+    <div class="glass-card budget-card">
+      <div class="budget-header">
+        <span class="budget-label">本周总预算</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:4px;">
+        <span class="budget-value">&yen;${budget}</span>
+        <span class="budget-unit">元</span>
+      </div>
+      <div class="budget-subtitle">已规划分配 &yen;${total} / &yen;${budget}</div>
+      <div class="bar-chart">${barsHtml}</div>
+    </div>`;
+}
+
+/* ─── Render Recipe Table ─── */
+function renderRecipes(recipes) {
+  const todayKey = getTodayKey();
+  let rowsHtml = '';
+  recipes.forEach(r => {
+    const isToday = r.day === todayKey;
+    const rowClass = isToday ? 'today-row' : '';
+    const todayBadge = isToday ? '<span class="today-badge">今天</span>' : '';
+    rowsHtml += `
+      <tr class="${rowClass}">
+        <td class="day-cell">${r.day}${todayBadge}</td>
+        <td class="meal-text">${r.breakfast || '-'}</td>
+        <td class="meal-text">${r.lunch || '-'}</td>
+        <td class="meal-text">${r.dinner || '-'}</td>
+        <td>&yen;${r.estimated_cost || 0}</td>
+      </tr>`;
+  });
+
+  return `
+    <div class="glass-card recipe-card">
+      <div class="card-title">七日食谱</div>
+      <div class="table-scroll">
+        <table class="recipe-table">
+          <thead>
+            <tr>
+              <th>日期</th><th>早餐</th><th>午餐</th><th>晚餐</th><th>预估</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+/* ─── Render Shopping List ─── */
+function renderShopping(list) {
+  const totalPrice = list.reduce((s, i) => s + (i.estimated_price || 0), 0);
+
+  // Group by category
+  const grouped = {};
+  list.forEach(item => {
+    const cat = item.category || '其他';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
+  });
+
+  let categoriesHtml = '';
+  for (const [cat, items] of Object.entries(grouped)) {
+    let itemsHtml = '';
+    items.forEach((item, idx) => {
+      const pCls = getPriorityClass(item.priority);
+      const uid = 'shop_' + cat + '_' + idx;
+      itemsHtml += `
+        <div class="shop-item" data-uid="${uid}" onclick="toggleShopItem(this)">
+          <div class="shop-checkbox">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <span class="shop-item-name">${item.item}</span>
+          <div class="shop-item-right">
+            <span class="priority-badge ${pCls}">${item.priority || '中'}</span>
+            <span class="shop-price">&yen;${item.estimated_price || 0}</span>
+          </div>
+        </div>`;
+    });
+    categoriesHtml += `
+      <div class="shop-category">
+        <div class="shop-category-name">${cat}</div>
+        ${itemsHtml}
+      </div>`;
+  }
+
+  return `
+    <div class="glass-card shop-card">
+      <div class="card-title">购物清单</div>
+      <div class="shop-summary">共 ${list.length} 项，预估总计 &yen;${totalPrice}</div>
+      ${categoriesHtml}
+    </div>`;
+}
+
+/* ─── Toggle shopping item ─── */
+function toggleShopItem(el) {
+  el.classList.toggle('checked');
+}
+
+/* ─── Render Entertainment ─── */
+function renderEntertainment(list) {
+  let itemsHtml = '';
+  list.forEach(item => {
+    const isFree = !item.budget || item.budget === 0;
+    const iconCls = isFree ? 'free' : 'paid';
+    const budgetCls = isFree ? 'free' : 'paid';
+    const budgetText = isFree ? '免费' : '\u00A5' + item.budget;
+    const icon = isFree ? '&#127939;' : '&#127916;';
+    itemsHtml += `
+      <div class="fun-item">
+        <div class="fun-icon ${iconCls}">${icon}</div>
+        <div class="fun-info">
+          <div class="fun-activity">${item.activity}</div>
+          <div class="fun-reason">${item.reason || ''}</div>
+        </div>
+        <div class="fun-meta">
+          <div class="fun-day">${item.day || ''}</div>
+          <div class="fun-budget ${budgetCls}">${budgetText}</div>
+        </div>
+      </div>`;
+  });
+
+  return `
+    <div class="glass-card fun-card">
+      <div class="card-title">休闲娱乐</div>
+      <div class="fun-list">${itemsHtml}</div>
+    </div>`;
+}
+
+/* ─── Render Tabs ─── */
+function renderTabs(data) {
+  return `
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('recipe', this)">食谱详情</button>
+      <button class="tab-btn" onclick="switchTab('shop', this)">购物清单</button>
+      <button class="tab-btn" onclick="switchTab('fun', this)">娱乐安排</button>
+    </div>
+    <div id="panel-recipe" class="tab-panel active">
+      ${renderRecipes(data.recipes || [])}
+    </div>
+    <div id="panel-shop" class="tab-panel">
+      ${renderShopping(data.shopping_list || [])}
+    </div>
+    <div id="panel-fun" class="tab-panel">
+      ${renderEntertainment(data.entertainment || [])}
+    </div>`;
+}
+
+/* ─── Switch Tab ─── */
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+/* ─── Render full page ─── */
+function renderPage(data) {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = renderBudget(data) + renderTabs(data);
+}
+
+/* ─── Render error ─── */
+function renderError(msg) {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <div class="error-container">
+      <div class="error-icon">!</div>
+      <div class="error-title">加载失败</div>
+      <div class="error-desc">${msg || '无法获取规划数据，请稍后重试。'}</div>
+      <button class="btn-retry" onclick="loadData()">重新加载</button>
+    </div>`;
+}
+
+/* ─── Load data from API ─── */
+async function loadData() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <div class="loading-container" id="loadingView">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">正在加载规划数据...</div>
+    </div>`;
+
+  try {
+    const url = reportId
+      ? '/api/v1/chatbot/reports/' + encodeURIComponent(reportId)
+      : '/api/v1/chatbot/skill-data/' + type;
+    const resp = await ve5_fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const json = await resp.json();
+    if (!json.success || !json.data) throw new Error('接口返回异常');
+    // report_store API 返回 {data: {report_id, type, data: {weekly_budget, ...}, metadata}}
+    // 兼容两种结构：如果 json.data 有嵌套 .data 字段，取内层
+    const pageData = (json.data.data && typeof json.data.data === 'object' && json.data.type) ? json.data.data : json.data;
+    renderPage(pageData);
+  } catch (err) {
+    console.error('chatbot-result load error:', err);
+    renderError(err.message);
+  }
+}
+
+/* ─── Init ─── */
+loadData();
+</script>
+</body>
+</html>

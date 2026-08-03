@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>VE5 -- Bot 云端渠道</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #0f172a; --bg-surface: #1e293b; --bg-elevated: #334155;
+  --border-color: #334155; --border-active: #3b82f6;
+  --text-primary: #e2e8f0; --text-secondary: #94a3b8; --text-muted: #64748b;
+  --accent: #2563eb; --accent-sec: #3b82f6; --accent-cyan: #22d3ee;
+  --accent-emerald: #34d399; --accent-amber: #f59e0b; --accent-rose: #f43f5e;
+  --success: #22c55e; --warning: #f59e0b;
+  --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px;
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.3);
+  --mono: 'JetBrains Mono', monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; font-family:'Inter','Noto Sans SC',sans-serif; background:var(--bg-deep); color:var(--text-primary); overflow-x:hidden; }
+.bg-grid { position:fixed;inset:0; background-image:linear-gradient(rgba(37,99,235,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,0.03) 1px,transparent 1px); background-size:60px 60px; pointer-events:none; z-index:0; }
+.page-container { position:relative;z-index:1; max-width:1200px; margin:0 auto; padding:32px 40px 60px; }
+
+.page-header { margin-bottom:32px; }
+.page-header h1 { font-size:28px; font-weight:700; color:var(--text-primary); margin-bottom:4px; }
+.page-header .nav-back { font-size:13px; color:var(--text-secondary); margin-bottom:8px; }
+.page-header .nav-back a { color:var(--accent-sec); text-decoration:none; }
+.page-header .nav-back a:hover { text-decoration:underline; }
+.page-header .subtitle { font-size:14px; color:var(--text-secondary); }
+
+/* Bot Cards */
+.bot-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap:20px; margin-bottom:32px; }
+.bot-card { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:20px; transition:border-color 0.2s,transform 0.2s; position:relative; }
+.bot-card:hover { border-color:var(--accent-sec); transform:translateY(-1px); }
+.bot-card.inactive { opacity:0.55; }
+.bot-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.bot-card-icon { width:40px;height:40px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0; }
+.bot-card-icon.bot-life { background:rgba(52,211,153,0.15); color:var(--accent-emerald); }
+.bot-card-icon.bot-asset { background:rgba(37,99,235,0.15); color:var(--accent-sec); }
+.bot-status { display:flex;align-items:center;gap:6px; }
+.bot-dot { width:8px;height:8px;border-radius:50%; }
+.bot-dot.on { background:var(--success); box-shadow:0 0 6px rgba(34,197,94,0.5); }
+.bot-dot.off { background:var(--text-muted); }
+.bot-name { font-size:16px; font-weight:600; color:var(--text-primary); margin-bottom:4px; }
+.bot-source { font-size:12px; color:var(--accent-cyan); font-weight:500; margin-bottom:10px; }
+.bot-info { font-size:12px; color:var(--text-secondary); line-height:1.6; margin-bottom:12px; }
+.bot-info span { color:var(--text-muted); }
+.bot-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.btn { padding:6px 14px; border-radius:6px; font-size:12px; font-weight:500; cursor:pointer; border:none; transition:opacity 0.2s; }
+.btn-primary { background:var(--accent); color:#fff; }
+.btn-outline { background:transparent; border:1px solid var(--border-color); color:var(--text-secondary); }
+.btn-danger { background:rgba(244,63,94,0.1); border:1px solid rgba(244,63,94,0.2); color:var(--accent-rose); }
+.btn:hover { opacity:0.85; }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+
+/* Add Bot Placeholder */
+.bot-add { background:transparent; border:1px dashed var(--border-color); border-radius:var(--radius-md); padding:32px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; min-height:160px; transition:border-color 0.2s; }
+.bot-add:hover { border-color:var(--accent-sec); }
+.bot-add .plus { font-size:32px; color:var(--text-muted); margin-bottom:8px; }
+.bot-add .label { font-size:13px; color:var(--text-muted); }
+
+/* Modal */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; display:none; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-lg); padding:28px; width:560px; max-width:95vw; max-height:90vh; overflow-y:auto; box-shadow:0 8px 48px rgba(0,0,0,0.5); }
+.modal h3 { font-size:18px; font-weight:600; margin-bottom:20px; color:var(--text-primary); }
+.modal label { display:block; font-size:12px; color:var(--text-secondary); margin-bottom:4px; font-weight:500; }
+.modal input,.modal select,.modal textarea { width:100%; background:var(--bg-deep); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:8px 12px; font-size:13px; color:var(--text-primary); font-family:inherit; margin-bottom:14px; outline:none; transition:border-color 0.2s; }
+.modal input:focus,.modal select:focus,.modal textarea:focus { border-color:var(--accent-sec); }
+.modal textarea { resize:vertical; min-height:60px; font-family:var(--mono); font-size:12px; }
+.modal .checkbox-row { display:flex; align-items:center; gap:8px; margin-bottom:14px; font-size:13px; color:var(--text-secondary); }
+.modal .checkbox-row input[type=checkbox] { width:auto; margin:0; }
+.modal .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal .form-section { border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:12px; margin-bottom:14px; }
+.modal .form-section h4 { font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:10px; }
+.modal .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:6px; }
+
+/* Logs */
+.log-section { margin-top:40px; border-top:1px solid var(--border-color); padding-top:24px; }
+.log-section h3 { font-size:16px; font-weight:600; margin-bottom:16px; }
+.log-table { width:100%; border-collapse:collapse; font-size:12px; }
+.log-table th { text-align:left;padding:6px 10px;border-bottom:1px solid var(--border-color);color:var(--text-muted);font-weight:500; }
+.log-table td { padding:6px 10px;border-bottom:1px solid rgba(51,65,85,0.5);color:var(--text-secondary);font-family:var(--mono); }
+.log-status-sent { color:var(--success); }
+.log-status-failed { color:var(--accent-rose); }
+
+.empty-state { text-align:center; padding:40px; color:var(--text-muted); font-size:14px; }
+.loading { text-align:center; padding:20px; color:var(--text-muted); }
+.spinner { display:inline-block; width:20px;height:20px;border:2px solid var(--border-color);border-top-color:var(--accent-sec);border-radius:50%;animation:spin 0.8s linear infinite; vertical-align:middle; margin-right:8px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="page-container">
+
+<div class="page-header">
+  <div class="nav-back"><a href="index.html">&larr; 返回财务中枢</a></div>
+  <h1>Bot 云端渠道</h1>
+  <div class="subtitle">管理跨设备消息推送渠道，将 VE5 的分析结果发送到群聊机器人</div>
+</div>
+
+<div class="bot-grid" id="botGrid">
+  <div class="loading"><div class="spinner"></div>加载中...</div>
+</div>
+
+<div class="log-section">
+  <h3>全部 Bot 发送日志</h3>
+  <div id="allLogs"><div class="empty-state">暂无日志</div></div>
+</div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+<div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+var _xve5_token = (function() {
+  var m = location.search.match(/[?&]ve5_token=([^&]+)/);
+  return m ? m[1] : '';
+})();
+
+function apiGet(url) {
+  var fullUrl = url + (url.indexOf('?')!==-1?'&':'?') + '_t=' + Date.now();
+  var headers = { 'Accept': 'application/json' };
+  if (_xve5_token) headers['x-ve5-token'] = _xve5_token;
+  return fetch(fullUrl, { headers: headers }).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function apiPost(url, body) {
+  var fullUrl = url + (url.indexOf('?')!==-1?'&':'?') + '_t=' + Date.now();
+  var headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+  if (_xve5_token) headers['x-ve5-token'] = _xve5_token;
+  return fetch(fullUrl, { method: 'POST', headers: headers, body: JSON.stringify(body || {}) }).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function apiPut(url, body) {
+  var fullUrl = url + (url.indexOf('?')!==-1?'&':'?') + '_t=' + Date.now();
+  var headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+  if (_xve5_token) headers['x-ve5-token'] = _xve5_token;
+  return fetch(fullUrl, { method: 'PUT', headers: headers, body: JSON.stringify(body || {}) }).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function apiDelete(url) {
+  var fullUrl = url + (url.indexOf('?')!==-1?'&':'?') + '_t=' + Date.now();
+  var headers = { 'Accept': 'application/json' };
+  if (_xve5_token) headers['x-ve5-token'] = _xve5_token;
+  return fetch(fullUrl, { method: 'DELETE', headers: headers }).then(function(r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+var _bots = [];
+var _channelLabels = { feishu: '飞书', dingtalk: 'DingTalk', wecom: '微信企业', qq: 'QQ', custom: '自定义' };
+var _sourceLabels = { life_planner: '生活管家产出', asset_tactical: '资产配置战术产出' };
+
+function loadBots() {
+  apiGet('/api/v1/cloud-bots').then(function(json) {
+    _bots = (json && json.success && json.bots) ? json.bots : [];
+    renderBots();
+  }).catch(function(err) {
+    document.getElementById('botGrid').innerHTML = '<div class="empty-state">加载失败: ' + err.message + '</div>';
+  });
+}
+
+function renderBots() {
+  var grid = document.getElementById('botGrid');
+  var html = '';
+
+  _bots.forEach(function(b) {
+    var isOn = b.is_active === 1;
+    var channel = _channelLabels[b.channel_type] || b.channel_type;
+    var source = _sourceLabels[b.source_module] || b.source_module;
+    var rules = b.trigger_rules || {};
+    var ruleCount = Object.keys(rules).filter(function(k) {
+      if (typeof rules[k] === 'object') return rules[k].enabled;
+      return rules[k] === true;
+    }).length;
+
+    html += '<div class="bot-card' + (isOn ? '' : ' inactive') + '">';
+    html += '<div class="bot-card-header">';
+    html += '<div class="bot-card-icon ' + (b.source_module === 'life_planner' ? 'bot-life' : 'bot-asset') + '">' + (b.source_module === 'life_planner' ? '&#x1F4CB;' : '&#x1F4C8;') + '</div>';
+    html += '<div class="bot-status"><div class="bot-dot ' + (isOn ? 'on' : 'off') + '"></div><span style="font-size:12px;color:var(--text-muted);">' + (isOn ? '在线' : '已停用') + '</span></div>';
+    html += '</div>';
+    html += '<div class="bot-name">' + escHtml(b.name) + '</div>';
+    html += '<div class="bot-source">from: ' + source + ' &middot; ' + channel + '</div>';
+    html += '<div class="bot-info">';
+    var showToken = (b.access_token || '').substring(0, 20);
+    if (b.channel_type === 'custom') {
+      html += '<span>webhook:</span> ' + escHtml((b.webhook_url || '').substring(0, 40)) + '...<br>';
+    } else {
+      html += '<span>access_token:</span> ' + escHtml(showToken) + '...<br>';
+    }
+    html += '<span>触发规则:</span> ' + ruleCount + ' 条 ';
+    html += (b.message_recovery ? '<span style="color:var(--accent-emerald);">(消息回收)</span>' : '');
+    html += '</div>';
+    html += '<div class="bot-actions">';
+    html += '<button class="btn btn-primary" onclick="toggleBot(\'' + b.bot_id + '\')">' + (isOn ? '停用' : '启用') + '</button>';
+    html += '<button class="btn btn-outline" onclick="editBot(\'' + b.bot_id + '\')">配置</button>';
+    html += '<button class="btn btn-outline" onclick="sendTest(\'' + b.bot_id + '\')">测试发送</button>';
+    html += '<button class="btn btn-danger" onclick="deleteBot(\'' + b.bot_id + '\')">删除</button>';
+    html += '</div></div>';
+  });
+
+  // Add bot button
+  html += '<div class="bot-add" onclick="addBot()"><div class="plus">+</div><div class="label">新建 Bot 渠道</div></div>';
+
+  grid.innerHTML = html;
+  loadAllLogs();
+}
+
+/* ─── Toggle ─── */
+function toggleBot(botId) {
+  apiPost('/api/v1/cloud-bots/' + botId + '/toggle', {}).then(function(json) {
+    if (json && json.success) loadBots();
+  });
+}
+
+/* ─── Delete ─── */
+function deleteBot(botId) {
+  if (!confirm('确定删除该 Bot？')) return;
+  apiDelete('/api/v1/cloud-bots/' + botId).then(function(json) {
+    loadBots();
+  });
+}
+
+/* ─── Send Test ─── */
+function sendTest(botId) {
+  var msg = prompt('请输入测试消息内容：', '这是一条来自 VE5 的测试消息');
+  if (!msg) return;
+  apiPost('/api/v1/cloud-bots/' + botId + '/send', { content: msg, message_type: 'test' }).then(function(json) {
+    if (json && json.success) {
+      alert('发送成功');
+      loadBots();
+    } else {
+      alert('发送失败: ' + (json && json.error ? json.error : '未知错误'));
+    }
+  }).catch(function(err) {
+    alert('发送失败: ' + err.message);
+  });
+}
+
+/* ─── Add Bot ─── */
+function addBot() {
+  _formBot(null);
+}
+
+function editBot(botId) {
+  var b = _bots.find(function(x) { return x.bot_id === botId; });
+  if (!b) return;
+  _formBot(b);
+}
+
+function _formBot(bot) {
+  var isEdit = !!bot;
+  var title = isEdit ? '编辑 Bot 配置' : '新建 Bot 渠道';
+  var modal = document.getElementById('modalContent');
+
+  var html = '<h3>' + title + '</h3>';
+
+  html += '<div class="form-row">';
+  html += '<div><label>Bot ID（英文标识）</label><input id="fBotId" value="' + escHtml(bot ? bot.bot_id : '') + '" ' + (isEdit ? 'readonly' : '') + ' placeholder="如: bot_life_dingtalk"></div>';
+  html += '<div><label>显示名称</label><input id="fName" value="' + escHtml(bot ? bot.name : '') + '" placeholder="如: 生活管家钉钉播报"></div>';
+  html += '</div>';
+
+  html += '<div class="form-row">';
+  html += '<div><label>来源模块</label><select id="fSource">';
+  html += '<option value="life_planner"' + (bot && bot.source_module === 'life_planner' ? ' selected' : '') + '>life_planner (生活管家)</option>';
+  html += '<option value="asset_tactical"' + (bot && bot.source_module === 'asset_tactical' ? ' selected' : '') + '>asset_tactical (资产配置战术)</option>';
+  html += '</select></div>';
+  html += '<div><label>渠道类型</label><select id="fChannel" onchange="onChannelChange()">';
+  ['feishu', 'dingtalk', 'wecom', 'custom'].forEach(function(ch) {
+    html += '<option value="' + ch + '"' + (bot && bot.channel_type === ch ? ' selected' : '') + '>' + (_channelLabels[ch] || ch) + '</option>';
+  });
+  html += '</select></div>';
+  html += '</div>';
+
+  // Channel-specific credential fields
+  var chType = bot ? (bot.channel_type || 'feishu') : 'feishu';
+  html += '<div id="fCredentialArea">' + _buildChannelFields(chType, bot) + '</div>';
+
+  // Trigger rules
+  var rules = bot ? (bot.trigger_rules || {}) : {};
+  html += '<div class="form-section"><h4>触发规则</h4>';
+  html += '<div class="checkbox-row"><input type="checkbox" id="fRulePlan"' + (rules.on_plan_created ? ' checked' : '') + '><span>计划制定后一次性推送（完整清单）</span></div>';
+  html += '<div class="form-row"><div><label>每日定时推送</label><select id="fDaily"><option value="">不启用</option>';
+  for (var h = 6; h <= 22; h++) { var t = String(h).padStart(2,'0') + ':00'; html += '<option value="' + t + '"' + (rules.daily_schedule && rules.daily_schedule.time === t ? ' selected' : '') + '>' + t + '</option>'; }
+  html += '</select></div><div><label>每周汇总</label><select id="fWeekly"><option value="">不启用</option>';
+  ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].forEach(function(d,i) {
+    html += '<option value="' + d + '"' + (rules.weekly_summary && rules.weekly_summary.day === d ? ' selected' : '') + '>' + ['周一','周二','周三','周四','周五','周六','周日'][i] + '</option>';
+  });
+  html += '</select></div></div>';
+  html += '<div class="form-row"><div><label>汇总发送时间</label><input id="fWeeklyTime" value="' + escHtml((rules.weekly_summary && rules.weekly_summary.time) || '09:00') + '" placeholder="09:00"></div><div></div></div>';
+  html += '</div>';
+
+  // Recovery
+  html += '<div class="checkbox-row"><input type="checkbox" id="fRecovery"' + (bot && bot.message_recovery ? ' checked' : '') + '><span>启用消息回收（将 bot 群回复存入 RAG）</span></div>';
+  html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">飞书支持完整消息回收，DingTalk 需配置 outgoing webhook。微信/QQ 暂不支持。</div>';
+
+  html += '<div class="modal-actions">';
+  html += '<button class="btn btn-outline" onclick="closeModal()">取消</button>';
+  html += '<button class="btn btn-primary" id="fSubmit" onclick="' + (isEdit ? 'submitUpdate(\'' + bot.bot_id + '\')' : 'submitCreate()') + '">' + (isEdit ? '保存修改' : '创建 Bot') + '</button>';
+  html += '</div>';
+
+  modal.innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function _buildChannelFields(chType, bot) {
+  if (chType === 'custom') {
+    return '<label>Webhook URL（完整地址）</label>' +
+      '<input id="fWebhook" value="' + escHtml(bot ? (bot.webhook_url || '') : '') + '" placeholder="https://your-server.com/webhook/...">' +
+      '<label>Secret（可选，用作 Auth Bearer 请求头）</label>' +
+      '<input id="fSecret" value="' + escHtml(bot ? (bot.secret || '') : '') + '" placeholder="可选的 API 密钥">';
+  }
+
+  // 飞书 / DingTalk / 微信企业：模板化
+  var templates = {
+    feishu: 'https://open.feishu.cn/open-apis/bot/v2/hook/{access_token}',
+    dingtalk: 'https://oapi.dingtalk.com/robot/send?access_token={access_token}',
+    wecom: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key={access_token}',
+  };
+  var template = templates[chType] || '';
+  var hints = {
+    feishu: '从飞书群聊 → 设置 → 群机器人 → 添加机器人 → 复制 webhook 地址中的 hook 后的部分',
+    dingtalk: '从钉钉群聊 → 智能群助手 → 添加机器人 → 自定义 → 加签 → 复制 access_token 和 加签密钥',
+    wecom: '从企业微信群聊 → 群机器人 → 添加 → 复制 key 参数',
+  };
+  var secHints = {
+    feishu: '飞书 webhook 不需要签名密钥（留空即可）',
+    dingtalk: '钉钉加签密钥（设置机器人时生成的 SEC 开头的字符串）',
+    wecom: '微信企业 webhook 不需要签名密钥（留空即可）',
+  };
+
+  return '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">URL 模板: ' + escHtml(template) + '</div>' +
+    '<label>Access Token（webhook 地址中的关键参数）</label>' +
+    '<input id="fAccessToken" value="' + escHtml(bot ? (bot.access_token || '') : '') + '" placeholder="' + escHtml(hints[chType] || '') + '">' +
+    '<label>Secret 签名密钥</label>' +
+    '<input id="fSecret" value="' + escHtml(bot ? (bot.secret || '') : '') + '" placeholder="' + escHtml(secHints[chType] || '') + '">';
+}
+
+function onChannelChange() {
+  var chType = document.getElementById('fChannel').value;
+  document.getElementById('fCredentialArea').innerHTML = _buildChannelFields(chType, null);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function submitCreate() {
+  var data = _collectForm();
+  var ch = data.channel_type;
+  if (!data.bot_id || !data.name) {
+    alert('Bot ID 和名称为必填项');
+    return;
+  }
+  if (ch === 'custom' && !data.webhook_url) {
+    alert('自定义渠道必须填写 Webhook URL');
+    return;
+  }
+  if (ch !== 'custom' && !data.access_token) {
+    alert(ch + ' 渠道需要填写 Access Token');
+    return;
+  }
+  apiPost('/api/v1/cloud-bots', data).then(function(json) {
+    if (json && json.success) { closeModal(); loadBots(); }
+    else alert('创建失败: ' + (json && json.error ? json.error : '未知错误'));
+  }).catch(function(err) { alert('创建失败: ' + err.message); });
+}
+
+function submitUpdate(botId) {
+  var data = _collectForm();
+  delete data.bot_id;
+  delete data.source_module;
+  apiPut('/api/v1/cloud-bots/' + botId, data).then(function(json) {
+    if (json && json.success) { closeModal(); loadBots(); }
+    else alert('更新失败: ' + (json && json.error ? json.error : '未知错误'));
+  }).catch(function(err) { alert('更新失败: ' + err.message); });
+}
+
+function _collectForm() {
+  var channel = document.getElementById('fChannel').value;
+  var rules = {};
+  if (document.getElementById('fRulePlan').checked) rules.on_plan_created = true;
+  var daily = document.getElementById('fDaily').value;
+  if (daily) rules.daily_schedule = { enabled: true, time: daily };
+  var weekly = document.getElementById('fWeekly').value;
+  if (weekly) rules.weekly_summary = { enabled: true, day: weekly, time: document.getElementById('fWeeklyTime').value || '09:00' };
+
+  var data = {
+    bot_id: document.getElementById('fBotId').value.trim(),
+    name: document.getElementById('fName').value.trim(),
+    source_module: document.getElementById('fSource').value,
+    channel_type: channel,
+    secret: document.getElementById('fSecret') ? document.getElementById('fSecret').value.trim() : '',
+    trigger_rules: rules,
+    message_recovery: document.getElementById('fRecovery').checked,
+  };
+
+  if (channel === 'custom') {
+    data.webhook_url = document.getElementById('fWebhook') ? document.getElementById('fWebhook').value.trim() : '';
+  } else {
+    data.access_token = document.getElementById('fAccessToken') ? document.getElementById('fAccessToken').value.trim() : '';
+  }
+
+  return data;
+}
+
+/* ─── All Logs ─── */
+function loadAllLogs() {
+  if (_bots.length === 0) return;
+  var allLogs = [];
+  var loaded = 0;
+  _bots.forEach(function(b) {
+    apiGet('/api/v1/cloud-bots/' + b.bot_id + '/logs?limit=5').then(function(json) {
+      var logs = (json && json.success && json.logs) ? json.logs : [];
+      logs.forEach(function(l) { l._bot_name = b.name; });
+      allLogs = allLogs.concat(logs);
+      loaded++;
+      if (loaded >= _bots.length) {
+        allLogs.sort(function(a, b) { return (b.sent_at || '').localeCompare(a.sent_at || ''); });
+        renderAllLogs(allLogs.slice(0, 20));
+      }
+    }).catch(function() { loaded++; });
+  });
+}
+
+function renderAllLogs(logs) {
+  var div = document.getElementById('allLogs');
+  if (logs.length === 0) {
+    div.innerHTML = '<div class="empty-state">暂无发送日志</div>';
+    return;
+  }
+  var html = '<table class="log-table"><thead><tr><th>Bot</th><th>类型</th><th>内容</th><th>状态</th><th>时间</th></tr></thead><tbody>';
+  logs.forEach(function(l) {
+    var preview = (l.content || '').substring(0, 60);
+    html += '<tr>';
+    html += '<td>' + escHtml(l._bot_name || l.bot_id) + '</td>';
+    html += '<td>' + escHtml(l.message_type || '') + '</td>';
+    html += '<td>' + escHtml(preview) + (preview.length >= 60 ? '...' : '') + '</td>';
+    html += '<td class="log-status-' + (l.status || 'sent') + '">' + (l.status === 'sent' ? '已发送' : '失败') + '</td>';
+    html += '<td>' + escHtml((l.sent_at || '').substring(0, 19)) + '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  div.innerHTML = html;
+}
+
+/* ─── ESC ─── */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+
+loadBots();
+</script>
+</body>
+</html>

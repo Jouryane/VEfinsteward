@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VE5 — 经验运行结果</title>
+<style>
+:root {
+  --bg-primary: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --text-primary: #1e3a5f;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  --accent-blue: #2563eb;
+  --accent-green: #16a34a;
+  --accent-amber: #d97706;
+  --accent-red: #dc2626;
+  --accent-indigo: #6366f1;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family: -apple-system, 'PingFang SC', 'Noto Sans CJK SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+.app { max-width:760px; margin:0 auto; padding:24px 20px 60px; }
+
+/* header */
+.result-header {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:28px 24px; margin-bottom:20px;
+}
+.result-header-top { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+.result-icon {
+  width:44px; height:44px; border-radius:12px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+  background:var(--bg-elevated);
+}
+.result-title { font-size:20px; font-weight:700; color:var(--text-primary); flex:1; }
+.result-desc { font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:16px; }
+.result-meta { display:flex; gap:8px; flex-wrap:wrap; }
+.result-meta-pill {
+  padding:4px 12px; border-radius:20px; font-size:11px; font-weight:600;
+  background:var(--bg-elevated); color:var(--text-secondary);
+  border:1px solid var(--border);
+}
+.result-meta-pill.level-auto { background:#dcfce7; color:#16a34a; border-color:#bbf7d0; }
+.result-meta-pill.level-learning { background:#fef3c7; color:#d97706; border-color:#fde68a; }
+.result-meta-pill.level-raw { background:#f1f5f9; color:#64748b; border-color:#e2e8f0; }
+
+/* data changes banner */
+.changes-banner {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:16px 20px; margin-bottom:16px;
+  border-left:3px solid var(--accent-blue);
+}
+.changes-banner-title {
+  font-size:13px; font-weight:700; color:var(--accent-blue);
+  margin-bottom:10px; display:flex; align-items:center; gap:6px;
+}
+.changes-list { display:flex; flex-direction:column; gap:6px; }
+.change-item {
+  display:flex; align-items:center; gap:8px; font-size:13px;
+  padding:6px 12px; background:var(--bg-elevated); border-radius:8px;
+}
+.change-item .change-label { color:var(--text-secondary); flex:1; }
+.change-item .change-arrow { color:var(--text-muted); font-size:12px; }
+.change-item .change-prev { color:var(--text-muted); font-size:12px; }
+.change-item .change-curr { font-weight:600; color:var(--text-primary); }
+.change-item.up .change-curr { color:var(--accent-green); }
+.change-item.down .change-curr { color:var(--accent-red); }
+.change-item .change-pct {
+  font-size:11px; padding:2px 6px; border-radius:4px; font-weight:600;
+}
+.change-item.up .change-pct { background:#dcfce7; color:#16a34a; }
+.change-item.down .change-pct { background:#fee2e2; color:#dc2626; }
+
+/* section cards */
+.section-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-md); padding:18px 20px; margin-bottom:12px;
+}
+.section-card.success { border-left:3px solid var(--accent-green); }
+.section-card.warning { border-left:3px solid var(--accent-amber); }
+.section-card.info { border-left:3px solid var(--accent-blue); }
+.section-label {
+  font-size:11px; font-weight:700; color:var(--text-muted);
+  text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;
+}
+.section-content {
+  font-size:14px; color:var(--text-primary); line-height:1.7;
+  white-space:pre-wrap; word-break:break-word;
+}
+
+/* progress bar */
+.progress-bar-wrap { margin:8px 0; }
+.progress-bar {
+  height:10px; background:var(--bg-elevated); border-radius:5px; overflow:hidden;
+  border:1px solid var(--border-light);
+}
+.progress-bar-fill {
+  height:100%; border-radius:5px;
+  background:linear-gradient(90deg,#6366f1,#22d3ee);
+  transition:width 0.8s ease;
+}
+.progress-label {
+  display:flex; justify-content:space-between; font-size:11px;
+  color:var(--text-muted); margin-top:4px;
+}
+
+/* KPI grid */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
+.kpi-item {
+  background:var(--bg-elevated); border-radius:var(--radius-sm);
+  padding:14px; text-align:center; border:1px solid var(--border-light);
+}
+.kpi-value { font-size:20px; font-weight:800; color:var(--accent-blue); }
+.kpi-label { font-size:10px; color:var(--text-muted); margin-top:4px; }
+
+/* footer */
+.footer-actions { text-align:center; margin-top:28px; display:flex; gap:8px; justify-content:center; }
+.back-btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:10px 20px; border-radius:var(--radius-sm);
+  background:var(--bg-card); border:1px solid var(--border);
+  color:var(--text-secondary); font-size:13px; cursor:pointer;
+  text-decoration:none; transition:all 0.15s;
+}
+.back-btn:hover { border-color:var(--accent-blue); color:var(--accent-blue); }
+.back-btn.primary { background:var(--accent-blue); color:#fff; border-color:var(--accent-blue); }
+.back-btn.primary:hover { opacity:0.9; color:#fff; }
+
+/* status */
+.loading { text-align:center; padding:80px 20px; color:var(--text-muted); font-size:14px; }
+.error-state { text-align:center; padding:60px 20px; color:var(--accent-red); }
+
+/* timestamp */
+.run-timestamp {
+  font-size:11px; color:var(--text-muted); text-align:center;
+  margin-top:16px;
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div id="loading" class="loading">正在执行经验…</div>
+  <div id="content" style="display:none;"></div>
+</div>
+
+<script>
+const API_BASE = '';
+let _ve5_token = '';
+(function(){
+  try {
+    const p=new URLSearchParams(location.search); const t=p.get('ve5_token');
+    if(t){_ve5_token=t;return;}
+  }catch(e){}
+  const m=document.cookie.match(/ve5_session_token=([^;]+)/);
+  if(m)_ve5_token=m[1];
+})();
+
+function ve5_fetch(url, options = {}) {
+  let tsUrl=url;
+  if(!url.includes('_t=')){const sep=url.includes('?')?'&':'?';tsUrl=url+sep+'_t='+Date.now();}
+  if(_ve5_token){options.headers=options.headers||{};options.headers['x-ve5-token']=_ve5_token;}
+  return fetch(tsUrl,options);
+}
+
+function ve5_extractProgress(text) {
+  const m = (text||'').match(/(\d+)%/);
+  return m ? parseInt(m[1]) : null;
+}
+
+function ve5_extractKpis(text) {
+  const kpis = [];
+  const re = /([\u4e00-\u9fa5\w]+)[：:]\s*[¥￥]?([\d,.]+)[%％]?/g;
+  let m;
+  while((m=re.exec(text))&&kpis.length<6){
+    kpis.push({label:m[1],value:m[2]+(text.charAt(m.index+m[0].length)==='%'?'%':'')});
+  }
+  return kpis;
+}
+
+function ve5_formatValue(key, val) {
+  if (typeof val === 'number') {
+    if (key.includes('amount') || key.includes('assets') || key.includes('income') || key.includes('expense') || key.includes('savings') || key.includes('target')) {
+      return '¥' + val.toLocaleString('zh-CN', {maximumFractionDigits:0});
+    }
+    if (key.includes('progress') || key.includes('rate') || key.includes('gap')) {
+      return val + '%';
+    }
+    return val.toLocaleString('zh-CN');
+  }
+  return String(val);
+}
+
+function render(data) {
+  document.getElementById('loading').style.display='none';
+  const content=document.getElementById('content');
+  const rp=data.result_page||{};
+  const output=data.output||{};
+  const execContext=data.exec_context||{};
+  const dataChanges=data.data_changes||[];
+  const codeExecuted=output._code_executed||data.code_executed||false;
+
+  const typeIcons = {
+    life_planner: '🍽', goal_tracking: '🎯', goal: '🎯',
+    spending_analysis: '📊', asset_doctor: '💰',
+    investment_advisor: '📈', budget_planning: '📋',
+  };
+  const expIcon = typeIcons[data.experience_type] || '⚡';
+
+  let html='';
+
+  // ── Header ──
+  const levelLabel={automatic:'⚡ 自动执行',learning:'🧪 辅助执行',raw:'🔬 学习中'};
+  const levelCls={automatic:'level-auto',learning:'level-learning',raw:'level-raw'};
+  html+=`<div class="result-header">
+    <div class="result-header-top">
+      <div class="result-icon">${expIcon}</div>
+      <div class="result-title">${rp.title||data.experience_name||'经验运行结果'}</div>
+    </div>
+    <div class="result-desc">${rp.description||data.experience_description||''}</div>
+    <div class="result-meta">
+      <span class="result-meta-pill ${levelCls[data.level]||'level-raw'}">${levelLabel[data.level]||data.level}</span>
+      <span class="result-meta-pill">置信度 ${Math.round((data.confidence||0)*100)}%</span>
+      ${data.trigger_event?`<span class="result-meta-pill">${data.trigger_event}</span>`:''}
+      ${codeExecuted?'<span class="result-meta-pill">代码执行</span>':''}
+      ${output._replay_mode?'<span class="result-meta-pill">习惯回放</span>':''}
+    </div>
+  </div>`;
+
+  // ── Data changes banner ──
+  if(dataChanges.length>0){
+    html+=`<div class="changes-banner">
+      <div class="changes-banner-title">📊 数据变化（相比上次报告）</div>
+      <div class="changes-list">`;
+    dataChanges.forEach(c=>{
+      const cls = c.direction==='up'?'up':'down';
+      const arrow = c.direction==='up'?'↑':'↓';
+      html+=`<div class="change-item ${cls}">
+        <span class="change-label">${c.label}</span>
+        <span class="change-prev">${ve5_formatValue(c.field, c.previous)}</span>
+        <span class="change-arrow">${arrow}</span>
+        <span class="change-curr">${ve5_formatValue(c.field, c.current)}</span>
+        ${c.change_pct?`<span class="change-pct">${c.change_pct}%</span>`:''}
+      </div>`;
+    });
+    html+=`</div></div>`;
+  }
+
+  // ── Code execution mode ──
+  if(codeExecuted && (output.reply || (output.sections && output.sections.length > 0))) {
+    if(output.reply) {
+      html+=`<div class="section-card success">
+        <div class="section-label">执行结果</div>
+        <div class="section-content">${output.reply}</div>
+      </div>`;
+    }
+    const codeSections = output.sections || [];
+    codeSections.forEach(sec => {
+      const secContent = sec.content || '';
+      const progress = ve5_extractProgress(secContent);
+      const kpis = ve5_extractKpis(secContent);
+      const hasProgress = progress !== null;
+      const hasKpis = kpis.length > 0;
+
+      if(hasKpis && (sec.id === 'hero' || sec.id === 'details' || sec.id === 'monthly' || sec.id === 'gap' || sec.id === 'overview')) {
+        html+=`<div class="section-card ${sec.id==='gap'?'warning':'success'}">
+          <div class="section-label">${sec.label||sec.id}</div>`;
+        if(hasProgress) {
+          html+=`<div class="progress-bar-wrap">
+            <div class="progress-bar"><div class="progress-bar-fill" style="width:${progress}%;"></div></div>
+            <div class="progress-label"><span>进度</span><span>${progress}%</span></div>
+          </div>`;
+        }
+        html+=`<div class="kpi-grid">${kpis.map(k=>`<div class="kpi-item">
+          <div class="kpi-value">${k.value}</div>
+          <div class="kpi-label">${k.label}</div>
+        </div>`).join('')}</div></div>`;
+      } else {
+        html+=`<div class="section-card">
+          <div class="section-label">${sec.label||sec.id}</div>
+          <div class="section-content">${secContent||'(无数据)'}</div>
+        </div>`;
+      }
+    });
+  } else {
+    // ── Template mode ──
+    const sections=rp.sections||[];
+    if(sections.length>0){
+      sections.forEach(sec=>{
+        const filled=sec.filled||sec.template||'';
+        const progress=ve5_extractProgress(filled);
+        const kpis=ve5_extractKpis(filled);
+        const hasProgress=progress!==null;
+        const hasKpis=kpis.length>0;
+
+        if(hasKpis&&(sec.id==='hero'||sec.id==='details'||sec.id==='monthly'||sec.id==='gap'||sec.id==='goal_overview'||sec.id==='financial_overview')){
+          html+=`<div class="section-card ${sec.id==='gap'||sec.id==='gap_analysis'?'warning':'success'}">
+            <div class="section-label">${sec.label||sec.id}</div>`;
+          if(hasProgress){
+            html+=`<div class="progress-bar-wrap">
+              <div class="progress-bar"><div class="progress-bar-fill" style="width:${Math.min(progress,100)}%;"></div></div>
+              <div class="progress-label"><span>进度</span><span>${progress}%</span></div>
+            </div>`;
+          }
+          html+=`<div class="kpi-grid">${kpis.map(k=>`<div class="kpi-item">
+            <div class="kpi-value">${k.value}</div>
+            <div class="kpi-label">${k.label}</div>
+          </div>`).join('')}</div></div>`;
+        }else{
+          html+=`<div class="section-card info">
+            <div class="section-label">${sec.label||sec.id}</div>
+            <div class="section-content">${filled||'(无数据)'}</div>
+          </div>`;
+        }
+      });
+    }else{
+      html+=`<div class="section-card"><div class="section-content">经验已执行完成</div></div>`;
+    }
+
+    // Raw output (only when no sections exist)
+    const visKeys=Object.keys(output).filter(k=>!k.startsWith('_')&&output[k]!==null&&String(output[k]).length>0);
+    if(sections.length===0 && visKeys.length>0){
+      html+=`<div class="section-card">
+        <div class="section-label">运行输出</div>
+        <div class="kpi-grid">${visKeys.map(k=>`<div class="kpi-item">
+          <div class="kpi-value">${ve5_formatValue(k, output[k])}</div>
+          <div class="kpi-label">${k}</div>
+        </div>`).join('')}</div>
+      </div>`;
+    }
+  }
+
+  // ── 结构化目标进度条（从 exec_context 读取）──
+  if(execContext.goal_progress !== undefined || execContext.progress !== undefined) {
+    const gp = execContext.goal_progress || execContext.progress || 0;
+    const target = execContext.target_amount || 0;
+    const current = execContext.current_amount || 0;
+    const goalName = execContext.goal_name || '';
+    const goalType = execContext.goal_type || '';
+    const remaining = execContext.remaining_amount || 0;
+    const monthsNeeded = execContext.months_needed || 0;
+    const ytdSavings = execContext.ytd_savings || 0;
+    const dataMonth = execContext.monthly_data_month || '';
+
+    const typeLabel = goalType === 'accumulation' ? '积累型' : '金额型';
+    const barColor = gp >= 75 ? '#22c55e' : gp >= 35 ? '#f59e0b' : '#94a3b8';
+
+    html+=`<div class="section-card success">
+      <div class="section-label">🎯 ${goalName} — ${typeLabel}目标进度</div>
+      <div class="progress-bar-wrap" style="margin:12px 0;">
+        <div class="progress-bar" style="height:14px;">
+          <div class="progress-bar-fill" style="width:${Math.min(gp,100)}%;background:linear-gradient(90deg,${barColor},${barColor}dd);transition:width 1s ease;"></div>
+        </div>
+        <div class="progress-label" style="font-size:13px;font-weight:600;margin-top:6px;">
+          <span>进度</span><span style="color:${barColor};font-size:16px;">${gp}%</span>
+        </div>
+      </div>
+      <div class="kpi-grid" style="margin-top:8px;">
+        <div class="kpi-item"><div class="kpi-value">¥${target.toLocaleString('zh-CN',{maximumFractionDigits:0})}</div><div class="kpi-label">目标金额</div></div>
+        <div class="kpi-item"><div class="kpi-value">¥${current.toLocaleString('zh-CN',{maximumFractionDigits:0})}</div><div class="kpi-label">当前金额</div></div>
+        <div class="kpi-item"><div class="kpi-value">¥${remaining.toLocaleString('zh-CN',{maximumFractionDigits:0})}</div><div class="kpi-label">剩余金额</div></div>
+        ${monthsNeeded > 0 ? `<div class="kpi-item"><div class="kpi-value">${monthsNeeded}</div><div class="kpi-label">预计月数</div></div>` : ''}
+        ${goalType === 'accumulation' && ytdSavings > 0 ? `<div class="kpi-item"><div class="kpi-value">¥${ytdSavings.toLocaleString('zh-CN',{maximumFractionDigits:0})}</div><div class="kpi-label">年度累计储蓄</div></div>` : ''}
+      </div>
+      ${dataMonth ? `<div style="font-size:11px;color:var(--text-muted);margin-top:8px;">数据月份：${dataMonth}</div>` : ''}
+    </div>`;
+  }
+
+  // Timestamp
+  html+=`<div class="run-timestamp">运行时间：${new Date().toLocaleString('zh-CN')}</div>`;
+
+  // Footer
+  html+=`<div class="footer-actions">
+    <a class="back-btn" href="experience-runtime.html">← 返回经验管理</a>
+    <a class="back-btn primary" href="index.html">→ 返回首页</a>
+  </div>`;
+
+  content.innerHTML=html;
+  content.style.display='block';
+}
+
+async function load(){
+  const params=new URLSearchParams(location.search);
+  let expId=params.get('exp_id')||'';
+
+  if(expId){
+    try{
+      const r=await ve5_fetch('/api/v1/experiences/'+expId+'/run-result');
+      if(r.ok){
+        const data=await r.json();
+        if(data.success){render(data);return;}
+        document.getElementById('loading').innerHTML=`<div class="error-state">经验运行失败<br><br><small>${data.error||'未知错误'}</small><br><br><a class="back-btn" href="experience-runtime.html">← 返回经验管理</a></div>`;
+        return;
+      }
+    }catch(e){}
+    document.getElementById('loading').innerHTML='<div class="error-state">经验运行失败<br><br><small>可能是经验脚本不完整或数据缺失</small><br><br><a class="back-btn" href="experience-runtime.html">← 返回经验管理</a></div>';
+    return;
+  }
+
+  document.getElementById('loading').innerHTML='<div class="error-state">缺少经验 ID<br><br><a class="back-btn" href="experience-runtime.html">← 返回经验管理</a></div>';
+}
+
+load();
+</script>
+</body>
+</html>
