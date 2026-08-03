@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VE5 — 经验层状态</title>
+<style>
+:root {
+  --bg-primary: #0b0d14;
+  --bg-elevated: #131620;
+  --bg-card: #181c27;
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0b0;
+  --text-muted: #5f6570;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-active: rgba(99,102,241,0.3);
+  --accent-indigo: #818cf8;
+  --accent-cyan: #22d3ee;
+  --accent-emerald: #34d399;
+  --accent-rose: #f43f5e;
+  --accent-amber: #fbbf24;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --mono: 'SF Mono','Fira Code','Consolas',monospace;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family: 'Inter',-apple-system,sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+.bg-grid {
+  position:fixed; inset:0; z-index:0; opacity:0.03;
+  background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.app { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
+
+/* header */
+.header { display:flex; align-items:center; gap:16px; margin-bottom:32px; }
+.brand-mark { width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#6366f1,#22d3ee); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px; }
+.brand-title { font-size:20px; font-weight:700; }
+.brand-sub { font-size:10px; color:var(--text-muted); letter-spacing:2px; }
+
+/* section */
+.section-title { font-size:13px; font-weight:700; color:var(--text-secondary); letter-spacing:1px; margin:28px 0 12px; display:flex; align-items:center; gap:8px; }
+.section-title::after { content:''; flex:1; height:1px; background:var(--border-subtle); }
+
+/* status banner */
+.status-banner {
+  background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(34,211,238,0.04));
+  border:1px solid var(--border-active);
+  border-radius:var(--radius-lg);
+  padding:20px 24px;
+  display:flex; align-items:center; gap:16px;
+  margin-bottom:24px;
+}
+.status-banner-icon { font-size:32px; }
+.status-banner-info { flex:1; }
+.status-banner-title { font-size:16px; font-weight:700; margin-bottom:4px; }
+.status-banner-desc { font-size:12px; color:var(--text-secondary); }
+.status-metrics { display:flex; gap:24px; }
+.status-metric { text-align:center; }
+.status-metric-value { font-size:28px; font-weight:800; font-family:var(--mono); }
+.status-metric-label { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+/* experience card */
+.exp-card {
+  background:var(--bg-card);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  padding:20px;
+  margin-bottom:12px;
+  transition:border-color 0.2s;
+}
+.exp-card:hover { border-color:rgba(99,102,241,0.15); }
+.exp-card-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.exp-card-icon {
+  width:36px; height:36px; border-radius:var(--radius-sm);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px;
+}
+.exp-card-name { font-size:14px; font-weight:600; }
+.exp-card-type { font-size:11px; color:var(--text-muted); }
+
+.exp-card-body { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px; }
+.exp-field { }
+.exp-field-label { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px; }
+.exp-field-value { font-size:12px; color:var(--text-secondary); }
+
+.exp-card-footer { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.exp-run-btn {
+  margin-left:auto; padding:6px 14px; border-radius:6px; border:none;
+  background:linear-gradient(135deg,rgba(99,102,241,0.8),rgba(129,140,248,0.8));
+  color:#fff; font-size:11px; font-weight:600; cursor:pointer;
+  transition:opacity 0.2s; white-space:nowrap;
+}
+.exp-run-btn:hover { opacity:0.85; }
+.exp-run-btn.running { opacity:0.5; pointer-events:none; }
+.exp-del-btn {
+  padding:6px 10px; border-radius:6px; border:1px solid rgba(244,63,94,0.2);
+  background:rgba(244,63,94,0.08); color:var(--accent-rose);
+  font-size:11px; cursor:pointer; transition:all 0.2s; white-space:nowrap;
+}
+.exp-del-btn:hover { background:rgba(244,63,94,0.2); }
+.exp-code-btn {
+  padding:6px 10px; border-radius:6px; border:1px solid rgba(99,102,241,0.2);
+  background:rgba(99,102,241,0.08); color:var(--accent-indigo);
+  font-size:11px; cursor:pointer; transition:all 0.2s; white-space:nowrap;
+}
+.exp-code-btn:hover { background:rgba(99,102,241,0.2); }
+.code-badge {
+  font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px;
+  background:rgba(34,211,238,0.1); color:var(--accent-cyan);
+  border:1px solid rgba(34,211,238,0.2); margin-right:6px;
+}
+.code-modal {
+  position:fixed; inset:0; z-index:100; display:none;
+  background:rgba(0,0,0,0.7); backdrop-filter:blur(4px);
+  align-items:center; justify-content:center;
+}
+.code-modal.active { display:flex; }
+.code-modal-content {
+  background:var(--bg-card); border:1px solid var(--border-subtle);
+  border-radius:var(--radius-lg); max-width:800px; width:90%; max-height:80vh;
+  display:flex; flex-direction:column;
+}
+.code-modal-header {
+  padding:16px 24px; border-bottom:1px solid var(--border-subtle);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.code-modal-title { font-size:14px; font-weight:700; }
+.code-modal-close {
+  background:none; border:none; color:var(--text-muted);
+  font-size:20px; cursor:pointer; padding:4px 8px;
+}
+.code-modal-close:hover { color:var(--text-primary); }
+.code-modal-body {
+  padding:20px 24px; overflow-y:auto; flex:1;
+}
+.code-block {
+  font-family:var(--mono); font-size:12px; line-height:1.6;
+  color:var(--text-primary); white-space:pre-wrap; word-break:break-word;
+  background:var(--bg-elevated); border-radius:var(--radius-sm);
+  padding:16px; border:1px solid var(--border-subtle);
+}
+.exp-tag {
+  font-size:10px; padding:3px 8px; border-radius:12px;
+  background:rgba(255,255,255,0.04);
+  color:var(--text-muted);
+  border:1px solid var(--border-subtle);
+}
+.exp-tag.origin { background:rgba(99,102,241,0.08); color:var(--accent-indigo); border-color:rgba(99,102,241,0.2); }
+
+/* level badge */
+.level-badge {
+  font-size:10px; font-weight:700; padding:2px 10px; border-radius:10px;
+  letter-spacing:0.5px; text-transform:uppercase;
+}
+.level-automatic { background:rgba(34,211,238,0.1); color:var(--accent-cyan); }
+.level-learning { background:rgba(251,191,36,0.1); color:var(--accent-amber); }
+.level-raw { background:rgba(244,63,94,0.1); color:var(--accent-rose); }
+
+/* workflow */
+.workflow-list { margin-top:8px; }
+.workflow-step {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 0; border-bottom:1px solid var(--border-subtle);
+  font-size:12px; color:var(--text-secondary);
+}
+.workflow-step:last-child { border-bottom:none; }
+.workflow-step-num {
+  width:20px; height:20px; border-radius:50%;
+  background:rgba(99,102,241,0.1); color:var(--accent-indigo);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; flex-shrink:0;
+}
+
+/* empty */
+.empty { text-align:center; padding:60px 0; color:var(--text-muted); }
+.empty-icon { font-size:48px; margin-bottom:12px; }
+.empty-title { font-size:16px; font-weight:700; margin-bottom:6px; }
+.empty-desc { font-size:12px; max-width:400px; margin:0 auto; line-height:1.6; }
+
+/* nav */
+.back-link { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--accent-indigo); text-decoration:none; margin-bottom:20px; }
+.back-link:hover { color:var(--accent-cyan); }
+
+.loading { text-align:center; padding:40px; color:var(--text-muted); font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<div class="app">
+  <a href="index.html" class="back-link">← 返回财务中枢</a>
+
+  <div class="header">
+    <div class="brand-mark">VE</div>
+    <div>
+      <div class="brand-title">经验层状态</div>
+      <div class="brand-sub">EXPERIENCE RUNTIME STATUS</div>
+    </div>
+  </div>
+
+  <!-- Status Banner -->
+  <div class="status-banner" id="statusBanner">
+    <div class="status-banner-icon">⚡</div>
+    <div class="status-banner-info">
+      <div class="status-banner-title">Experience Runtime 运行中</div>
+      <div class="status-banner-desc" id="statusDesc">加载中…</div>
+    </div>
+    <div class="status-metrics">
+      <div class="status-metric">
+        <div class="status-metric-value" id="autoCount" style="color:var(--accent-cyan);">-</div>
+        <div class="status-metric-label">自动执行</div>
+      </div>
+      <div class="status-metric">
+        <div class="status-metric-value" id="learnCount" style="color:var(--accent-amber);">-</div>
+        <div class="status-metric-label">学习中</div>
+      </div>
+      <div class="status-metric">
+        <div class="status-metric-value" id="rawCount" style="color:var(--accent-rose);">-</div>
+        <div class="status-metric-label">探查中</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Experience List -->
+  <div class="section-title">全部经验</div>
+  <div id="expList"><div class="loading">加载中…</div></div>
+
+  <!-- Empty -->
+  <div id="emptyState" class="empty" style="display:none;">
+    <div class="empty-icon">🧠</div>
+    <div class="empty-title">尚无经验</div>
+    <div class="empty-desc">
+      使用 VE 管家的目标追踪或生活规划后，LLM 生成的计划可保存为长期经验。<br/>
+      Experience Runtime 会自动学习用户的重复行为模式，逐渐减少 LLM 调用。
+    </div>
+  </div>
+</div>
+
+<!-- 代码查看弹窗 -->
+<div class="code-modal" id="codeModal" onclick="if(event.target===this)ve5_closeCodeModal()">
+  <div class="code-modal-content">
+    <div class="code-modal-header">
+      <div class="code-modal-title" id="codeModalTitle">经验代码</div>
+      <button class="code-modal-close" onclick="ve5_closeCodeModal()">&times;</button>
+    </div>
+    <div class="code-modal-body">
+      <div class="code-block" id="codeBlock">加载中...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+let _ve5_token = '';
+(function extractToken() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('ve5_token');
+    if (t) { _ve5_token = t; return; }
+  } catch(e) {}
+  const m = document.cookie.match(/ve5_session_token=([^;]+)/);
+  if (m) _ve5_token = m[1];
+})();
+
+function ve5_fetch(url, options = {}) {
+  let tsUrl = url;
+  if (!url.includes('_t=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    tsUrl = url + sep + '_t=' + Date.now();
+  }
+  if (_ve5_token) {
+    options.headers = options.headers || {};
+    options.headers['x-ve5-token'] = _ve5_token;
+  }
+  return fetch(tsUrl, options);
+}
+
+async function ve4_fetchJson(url) {
+  // 补全 URL 为绝对路径
+  if (!url.startsWith('http') && !url.startsWith('/')) url = '/' + url;
+  if (!url.startsWith('http')) {
+    const origin = window.location.origin;
+    const base = (origin && origin !== 'null' && !origin.startsWith('file://'))
+      ? origin : 'http://127.0.0.1:54953';
+    url = base + url;
+  }
+  try {
+    const r = await ve5_fetch(url);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+function fmt(v) { return v != null ? '¥' + Number(v).toLocaleString('zh-CN',{maximumFractionDigits:0}) : '—'; }
+function pct(v) { return v != null ? (v*100).toFixed(1)+'%' : '—'; }
+
+const LEVEL_CONFIG = {
+  automatic: { cls:'level-automatic', label:'自动执行 · 绕过 LLM' },
+  learning:  { cls:'level-learning',  label:'学习中 · LLM 辅助' },
+  raw:       { cls:'level-raw',       label:'探查中 · LLM 主导' },
+};
+
+const TYPE_ICON = {
+  goal_tracker: { icon:'🎯', color:'rgba(34,211,238,0.12)', textColor:'var(--accent-cyan)' },
+  life_planner: { icon:'🍽', color:'rgba(52,211,153,0.12)', textColor:'var(--accent-emerald)' },
+  default:      { icon:'📋', color:'rgba(255,255,255,0.06)', textColor:'var(--text-secondary)' },
+};
+
+function renderExperienceCards(exps) {
+  const listEl = document.getElementById('expList');
+  const emptyEl = document.getElementById('emptyState');
+  if (!exps || exps.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  emptyEl.style.display = 'none';
+
+  listEl.innerHTML = exps.map(exp => {
+    const lvl = LEVEL_CONFIG[exp.level] || LEVEL_CONFIG.raw;
+    const ti = TYPE_ICON[exp.type] || TYPE_ICON.default;
+    const origin = exp.origin || {};
+    const originType = origin.type || '?';
+    const episodeIds = (origin.episode_ids || []).slice(0,3).join(', ');
+    const workflow = exp.workflow || [];
+    const rules = exp.decision_rules || [];
+    const exceptions = exp.exception_rules || [];
+    const tags = exp.tags || [];
+    const cvars = exp.context_variables || [];
+    const freq = exp.frequency || 0;
+    const succ = exp.success_count || 0;
+    const fail = exp.failure_count || 0;
+    const pa = exp.prediction_accuracy || 0;
+    const lastUsed = exp.last_used ? exp.last_used.slice(0,10) : '从未';
+    const created = exp.created_at ? exp.created_at.slice(0,10) : '?';
+    const desc = exp.description || '';
+    const hasCode = !!exp.code_path;
+
+    return `
+    <div class="exp-card">
+      <div class="exp-card-header">
+        <div class="exp-card-icon" style="background:${ti.color};color:${ti.textColor};">${ti.icon}</div>
+        <div style="flex:1;">
+          <div class="exp-card-name">${exp.name}</div>
+          <div class="exp-card-type">${exp.type} · ${created} 创建</div>
+        </div>
+        ${hasCode ? '<span class="code-badge">⚡ 代码生成</span>' : ''}
+        <span class="level-badge ${lvl.cls}">${exp.level}</span>
+      </div>
+
+      <div class="exp-card-body">
+        <div class="exp-field">
+          <div class="exp-field-label">作用描述</div>
+          <div class="exp-field-value">${desc || '—'}</div>
+        </div>
+        <div class="exp-field">
+          <div class="exp-field-label">触发条件</div>
+          <div class="exp-field-value">${exp.trigger_event || '—'} (${exp.trigger_frequency || 'recurring'})</div>
+        </div>
+        <div class="exp-field">
+          <div class="exp-field-label">覆盖范围</div>
+          <div class="exp-field-value">${cvars.slice(0,4).join(', ') || '—'}</div>
+        </div>
+        <div class="exp-field">
+          <div class="exp-field-label">来源</div>
+          <div class="exp-field-value">${originType} · ${episodeIds || '—'}</div>
+        </div>
+        <div class="exp-field">
+          <div class="exp-field-label">上次使用</div>
+          <div class="exp-field-value">${lastUsed} · ${freq}次</div>
+        </div>
+        <div class="exp-field">
+          <div class="exp-field-label">成功率</div>
+          <div class="exp-field-value">${pct(pa)} · ${succ}成/${fail}败</div>
+        </div>
+      </div>
+
+      ${workflow.length ? `
+      <div class="workflow-list">
+        <div style="font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:6px;">Workflow (${workflow.length}步)</div>
+        ${workflow.map((w,i) => `
+        <div class="workflow-step">
+          <div class="workflow-step-num">${w.step||i+1}</div>
+          <span>${w.action}</span>
+          <span style="color:var(--text-muted);flex:1;text-align:right;font-size:11px;">${w.description||''}</span>
+        </div>`).join('')}
+      </div>` : ''}
+
+      <div class="exp-card-footer">
+        ${tags.map(t => `<span class="exp-tag">${t}</span>`).join('')}
+        ${originType ? `<span class="exp-tag origin">来源:${originType}</span>` : ''}
+        ${rules.length ? `<span class="exp-tag">${rules.length}条决策规则</span>` : ''}
+        ${exceptions.length ? `<span class="exp-tag">${exceptions.length}条例外</span>` : ''}
+        ${hasCode ? `<button class="exp-code-btn" onclick="ve5_viewCode('${exp.exp_id}')" title="查看生成的代码">📝 查看代码</button>` : ''}
+        <button class="exp-run-btn" onclick="ve5_expRun('${exp.exp_id}')" title="直接运行此经验">⚡ 运行</button>
+        <button class="exp-del-btn" onclick="ve5_expDelete('${exp.exp_id}','${exp.name}')" title="删除此经验">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function ve5_expRun(expId) {
+  const btns = document.querySelectorAll('.exp-run-btn');
+  btns.forEach(b => b.classList.add('running'));
+  btns.forEach(b => b.textContent = '运行中...');
+  try {
+    const r = await ve5_fetch('/api/v1/experiences/' + expId + '/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ triggered_by: 'manual_run' }),
+    });
+    const data = await r.json();
+    if (data.success) {
+      // 跳转到结果展示页
+      location.href = 'experience-result.html?exp_id=' + expId + '&_t=' + Date.now();
+    } else {
+      alert('运行失败: ' + (data.error || '未知错误'));
+    }
+  } catch(e) {
+    alert('网络错误');
+  }
+  btns.forEach(b => b.classList.remove('running'));
+  btns.forEach(b => b.textContent = '⚡ 运行');
+}
+
+async function ve5_expDelete(expId, expName) {
+  if (!confirm('确定要删除「' + expName + '」？此操作不可撤销。')) return;
+  try {
+    const r = await ve5_fetch('/api/v1/experiences/' + expId, { method: 'DELETE' });
+    const data = await r.json();
+    if (data.success) {
+      load();  // 重新加载列表
+    } else {
+      alert('删除失败: ' + (data.error || '未知错误'));
+    }
+  } catch(e) {
+    alert('网络错误');
+  }
+}
+
+async function ve5_viewCode(expId) {
+  const modal = document.getElementById('codeModal');
+  const titleEl = document.getElementById('codeModalTitle');
+  const codeEl = document.getElementById('codeBlock');
+  titleEl.textContent = '经验代码 — ' + expId;
+  codeEl.textContent = '加载中...';
+  modal.classList.add('active');
+  try {
+    const r = await ve5_fetch('/api/v1/experiences/' + expId + '/code');
+    const data = await r.json();
+    if (data.success && data.code) {
+      codeEl.textContent = data.code;
+      titleEl.textContent = '经验代码 — ' + (data.name || expId);
+    } else {
+      codeEl.textContent = '(无代码或代码未生成)';
+    }
+  } catch(e) {
+    codeEl.textContent = '加载失败: ' + e.message;
+  }
+}
+
+function ve5_closeCodeModal() {
+  document.getElementById('codeModal').classList.remove('active');
+}
+
+async function load() {
+  const json = await ve4_fetchJson('/api/v1/experiences/runtime');
+  if (!json || !json.success || !json.runtime) {
+    document.getElementById('statusDesc').textContent = '无法连接 Experience Runtime';
+    document.getElementById('expList').innerHTML = '';
+    return;
+  }
+
+  const rt = json.runtime;
+  const autoCount = rt.automatic_count || 0;
+  const learnCount = rt.learning_count || 0;
+
+  // count raw
+  let rawCount = 0;
+  if (rt.automatics) {
+    rt.automatics.forEach(e => { if (e.level === 'raw') rawCount++; });
+  }
+
+  document.getElementById('autoCount').textContent = autoCount;
+  document.getElementById('learnCount').textContent = learnCount;
+  document.getElementById('rawCount').textContent = rawCount;
+
+  document.getElementById('statusDesc').textContent =
+    autoCount > 0
+      ? `${autoCount} 个经验自动执行中，完全绕过 LLM；${learnCount} 个在 LLM 辅助决策中`
+      : learnCount > 0
+        ? `${learnCount} 个经验在 LLM 辅助决策中，持续使用后将跃迁为自动执行`
+        : '尚无经验。使用 VE 管家建立经验后，Runtime 将逐渐减少 LLM 调用。';
+
+  // load full list
+  const listJson = await ve4_fetchJson('/api/v1/experiences/list');
+  const exps = (listJson && listJson.success && listJson.experiences) ? listJson.experiences : [];
+  renderExperienceCards(exps);
+}
+
+load();
+</script>
+</body>
+</html>

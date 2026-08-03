@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>VE5 -- RAG 知识库管理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── Design Tokens (VE5) ─── */
+:root {
+  --bg-deep: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-elevated: #334155;
+  --border-color: #334155;
+  --border-active: #3b82f6;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #2563eb;
+  --accent-sec: #3b82f6;
+  --accent-cyan: #22d3ee;
+  --accent-emerald: #34d399;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.3);
+  --shadow-panel: 0 8px 48px rgba(0,0,0,0.5);
+  --mono: 'JetBrains Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, system-ui, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+/* ─── Subtle Grid Background ─── */
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(37,99,235,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37,99,235,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Layout ─── */
+.page-container {
+  position: relative;
+  z-index: 1;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px 40px 60px;
+}
+
+/* ─── Header ─── */
+.page-header {
+  margin-bottom: 40px;
+}
+.page-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.page-header .subtitle {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+.stats-bar {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.stat-item .stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-sec);
+  font-family: var(--mono);
+}
+.stat-item .stat-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ─── Module Grid ─── */
+.module-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+/* ─── Module Card ─── */
+.module-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.module-card:hover {
+  border-color: var(--accent-sec);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+.module-card.planned {
+  opacity: 0.55;
+  cursor: default;
+  background: #182032;
+}
+.module-card.planned:hover {
+  border-color: var(--border-color);
+  transform: none;
+  box-shadow: none;
+}
+.card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.card-icon.blue { background: rgba(37,99,235,0.15); color: var(--accent-sec); }
+.card-icon.green { background: rgba(52,211,153,0.15); color: var(--accent-emerald); }
+.card-icon.amber { background: rgba(245,158,11,0.15); color: var(--accent-amber); }
+.card-icon.rose { background: rgba(244,63,94,0.15); color: var(--accent-rose); }
+.card-icon.cyan { background: rgba(34,211,238,0.15); color: var(--accent-cyan); }
+.card-icon.violet { background: rgba(167,139,250,0.15); color: #a78bfa; }
+.card-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge-active {
+  background: rgba(34,197,94,0.15);
+  color: var(--success);
+}
+.badge-planned {
+  background: rgba(100,116,139,0.2);
+  color: var(--text-muted);
+}
+.badge-privacy-high {
+  background: rgba(244,63,94,0.15);
+  color: var(--accent-rose);
+}
+.badge-privacy-medium {
+  background: rgba(245,158,11,0.15);
+  color: var(--warning);
+}
+.badge-privacy-low {
+  background: rgba(34,197,94,0.15);
+  color: var(--success);
+}
+.badge-count {
+  background: rgba(37,99,235,0.12);
+  color: var(--accent-sec);
+}
+.card-name {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.card-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.card-status-dot.active {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(34,197,94,0.5);
+}
+.card-status-dot.planned {
+  background: var(--text-muted);
+}
+.card-status-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+.card-record-count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.card-record-count span {
+  color: var(--accent-sec);
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
+/* ─── Planned Overlay ─── */
+.planned-overlay {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  background: rgba(100,116,139,0.15);
+  border: 1px solid rgba(100,116,139,0.2);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ─── Detail Panel (Slide-in) ─── */
+.detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 99;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.detail-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.detail-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 680px;
+  max-width: 100vw;
+  height: 100vh;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-color);
+  overflow-y: auto;
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-panel);
+}
+.detail-panel.open {
+  transform: translateX(0);
+}
+.detail-header {
+  position: sticky;
+  top: 0;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 2;
+}
+.detail-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.detail-header-left .card-icon {
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+}
+.detail-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+.detail-close {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s;
+}
+.detail-close:hover {
+  background: rgba(244,63,94,0.1);
+  color: var(--accent-rose);
+  border-color: rgba(244,63,94,0.3);
+}
+.detail-body {
+  padding: 24px;
+}
+.detail-desc {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* ─── Status + Privacy Badges in Detail ─── */
+.detail-badges {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+/* ─── Collapsible Section ─── */
+.collapse-section {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+.collapse-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background: rgba(37,99,235,0.05);
+  transition: background 0.2s;
+  user-select: none;
+}
+.collapse-header:hover {
+  background: rgba(37,99,235,0.1);
+}
+.collapse-header-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.collapse-arrow {
+  font-size: 12px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+.collapse-arrow.open {
+  transform: rotate(90deg);
+}
+.collapse-content {
+  padding: 0 16px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s, padding 0.3s;
+}
+.collapse-content.open {
+  max-height: 2000px;
+  padding: 12px 16px 16px;
+}
+.collapse-content pre {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ─── Tech Params ─── */
+.tech-params {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.tech-param {
+  background: rgba(37,99,235,0.05);
+  border: 1px solid rgba(37,99,235,0.1);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+.tech-param-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.tech-param-value {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  font-family: var(--mono);
+}
+
+/* ─── Tags ─── */
+.tags-section {
+  margin-bottom: 20px;
+}
+.tags-group {
+  margin-bottom: 12px;
+}
+.tags-group-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tag {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(37,99,235,0.1);
+  color: var(--accent-sec);
+  border: 1px solid rgba(37,99,235,0.15);
+}
+.tag.source {
+  background: rgba(34,211,238,0.08);
+  color: var(--accent-cyan);
+  border-color: rgba(34,211,238,0.15);
+}
+.tag.consumer {
+  background: rgba(52,211,153,0.08);
+  color: var(--accent-emerald);
+  border-color: rgba(52,211,153,0.15);
+}
+
+/* ─── Section Title ─── */
+.section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* ─── Records Table ─── */
+.table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(51,65,85,0.5);
+  color: var(--text-secondary);
+  vertical-align: top;
+}
+tr:hover td {
+  background: rgba(37,99,235,0.03);
+}
+td.text-preview {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.btn-delete {
+  background: rgba(244,63,94,0.1);
+  border: 1px solid rgba(244,63,94,0.2);
+  color: var(--accent-rose);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-delete:hover {
+  background: rgba(244,63,94,0.2);
+}
+
+/* ─── Vector Preview ─── */
+.vector-search {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.vector-search input {
+  flex: 1;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.vector-search input::placeholder {
+  color: var(--text-muted);
+}
+.vector-search input:focus {
+  border-color: var(--accent-sec);
+}
+.btn-search {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+.btn-search:hover {
+  background: #1d4ed8;
+}
+
+/* ─── Loading ─── */
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--accent-sec);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Error ─── */
+.error-msg {
+  color: var(--accent-rose);
+  font-size: 13px;
+  padding: 12px 16px;
+  background: rgba(244,63,94,0.08);
+  border: 1px solid rgba(244,63,94,0.15);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+/* ─── Empty State ─── */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ─── Planned Detail Modal ─── */
+.planned-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.planned-modal.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.planned-modal-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  max-width: 480px;
+  width: 90%;
+}
+.planned-modal-content h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.planned-modal-content p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+.planned-modal-close {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.planned-modal-close:hover {
+  background: rgba(244,63,94,0.1);
+  color: var(--accent-rose);
+}
+
+/* ─── Confirm Dialog ─── */
+.confirm-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.confirm-dialog.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.confirm-dialog-content {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  max-width: 400px;
+  width: 90%;
+}
+.confirm-dialog-content h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+.confirm-dialog-content p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.btn-confirm-cancel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+}
+.btn-confirm-ok {
+  background: rgba(244,63,94,0.15);
+  border: 1px solid rgba(244,63,94,0.3);
+  color: var(--accent-rose);
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.btn-confirm-ok:hover {
+  background: rgba(244,63,94,0.25);
+}
+
+/* ─── Distance Color Coding ─── */
+.dist-low { color: var(--success); }
+.dist-mid { color: var(--warning); }
+.dist-high { color: var(--accent-rose); }
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 20px 16px 40px;
+  }
+  .page-header h1 {
+    font-size: 24px;
+  }
+  .detail-panel {
+    width: 100vw;
+  }
+  .tech-params {
+    grid-template-columns: 1fr;
+  }
+  .module-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<!-- Main Content -->
+<div class="page-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div style="margin-bottom:16px;"><a href="index.html" style="color:var(--text-muted);text-decoration:none;font-size:14px;" onmouseover="this.style.color='var(--accent-sec)'" onmouseout="this.style.color='var(--text-muted)'">&#8592; 返回财务中枢</a></div>
+    <h1>知识管理</h1>
+    <div class="subtitle">RAG 知识库集中管理系统</div>
+    <div style="background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.15);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--text-secondary);line-height:1.6;">
+      <strong style="color:var(--text-primary);">隐私等级说明：</strong>
+      <span style="color:var(--accent-rose);font-weight:600;">High</span> = 账户余额/持仓/交易流水等核心金融数据 &nbsp;|&nbsp;
+      <span style="color:var(--warning);font-weight:600;">Medium</span> = 消费习惯/常去商家/所在区域等行为画像 &nbsp;|&nbsp;
+      <span style="color:var(--success);font-weight:600;">Low</span> = 研报/政策等公开市场信息
+    </div>
+    <div class="stats-bar">
+      <div class="stat-item">
+        <div class="stat-value" id="totalRecords">--</div>
+        <div class="stat-label">总计记录</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="activeModules">--</div>
+        <div class="stat-label">活跃模块</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="plannedModules">--</div>
+        <div class="stat-label">规划中模块</div>
+      </div>
+      <button id="syncAllBtn" style="background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;margin-left:auto;transition:background 0.2s;" onmouseover="this.style.background='var(--accent-sec)'" onmouseout="this.style.background='var(--accent)'">立即同步</button>
+    </div>
+  </div>
+
+  <!-- Module Grid -->
+  <div class="module-grid" id="moduleGrid">
+    <div class="loading-indicator" style="grid-column: 1/-1;">
+      <div class="spinner"></div>
+      <span>正在加载模块列表...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Panel Overlay -->
+<div class="detail-overlay" id="detailOverlay"></div>
+
+<!-- Detail Panel (Slide-in from right) -->
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-header">
+    <div class="detail-header-left">
+      <div class="card-icon blue" id="detailIcon"></div>
+      <div class="detail-title" id="detailTitle"></div>
+    </div>
+    <button class="detail-close" id="detailClose" title="关闭">&times;</button>
+  </div>
+  <div class="detail-body" id="detailBody">
+    <div class="loading-indicator">
+      <div class="spinner"></div>
+      <span>正在加载模块详情...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Planned Module Modal -->
+<div class="planned-modal" id="plannedModal">
+  <div class="planned-modal-content">
+    <h3 id="plannedModalTitle"></h3>
+    <p id="plannedModalDesc"></p>
+    <button class="planned-modal-close" id="plannedModalClose">关闭</button>
+  </div>
+</div>
+
+<!-- Confirm Delete Dialog -->
+<div class="confirm-dialog" id="confirmDialog">
+  <div class="confirm-dialog-content">
+    <h3>确认删除</h3>
+    <p id="confirmMsg">确定要删除该记录吗？此操作不可撤销。</p>
+    <div class="confirm-actions">
+      <button class="btn-confirm-cancel" id="confirmCancel">取消</button>
+      <button class="btn-confirm-ok" id="confirmOk">删除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── Globals ─── */
+var _xve5_token = '';
+var _modules = [];
+var _currentModule = null;
+var _pendingDelete = null;
+
+/* ─── Init: extract token from URL ─── */
+(function init() {
+  var params = new URLSearchParams(window.location.search);
+  _xve5_token = params.get('ve5_token') || '';
+  interceptLinks();
+  loadModules();
+})();
+
+/* ─── Link Interception ─── */
+function interceptLinks() {
+  document.addEventListener('click', function(e) {
+    var a = e.target.closest('a');
+    if (!a) return;
+    var href = a.getAttribute('href');
+    if (!href) return;
+    if (href.indexOf('.html') !== -1) {
+      e.preventDefault();
+      var sep = href.indexOf('?') !== -1 ? '&' : '?';
+      a.href = href + sep + '_t=' + Date.now();
+      if (_xve5_token) {
+        a.href += '&ve5_token=' + encodeURIComponent(_xve5_token);
+      }
+      window.location.href = a.href;
+    }
+  });
+}
+
+/* ─── API Helper ─── */
+function apiGet(url) {
+  var sep = url.indexOf('?') !== -1 ? '&' : '?';
+  var fullUrl = url + sep + '_t=' + Date.now();
+  var headers = { 'Accept': 'application/json' };
+  if (_xve5_token) {
+    headers['x-ve5-token'] = _xve5_token;
+  }
+  return fetch(fullUrl, { method: 'GET', headers: headers })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + r.statusText);
+      return r.json();
+    });
+}
+
+function apiDelete(url) {
+  var sep = url.indexOf('?') !== -1 ? '&' : '?';
+  var fullUrl = url + sep + '_t=' + Date.now();
+  var headers = { 'Accept': 'application/json' };
+  if (_xve5_token) {
+    headers['x-ve5-token'] = _xve5_token;
+  }
+  return fetch(fullUrl, { method: 'DELETE', headers: headers })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + r.statusText);
+      return r.json();
+    });
+}
+
+function apiPost(url, body) {
+  var sep = url.indexOf('?') !== -1 ? '&' : '?';
+  var fullUrl = url + sep + '_t=' + Date.now();
+  var headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+  if (_xve5_token) {
+    headers['x-ve5-token'] = _xve5_token;
+  }
+  return fetch(fullUrl, { method: 'POST', headers: headers, body: JSON.stringify(body || {}) })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + r.statusText);
+      return r.json();
+    });
+}
+
+/* ─── Load Modules ─── */
+function loadModules() {
+  apiGet('/api/v1/rag-hub/modules')
+    .then(function(json) {
+      _modules = (json && json.success && json.modules) ? json.modules : [];
+      renderModuleGrid(_modules);
+      updateStats();
+    })
+    .catch(function(err) {
+      console.error('加载模块失败:', err);
+      var grid = document.getElementById('moduleGrid');
+      grid.innerHTML = '<div class="error-msg">加载模块列表失败: ' + err.message + '</div>';
+    });
+}
+
+/* ─── Sync All ─── */
+function syncAll() {
+  var btn = document.getElementById('syncAllBtn');
+  btn.textContent = '同步中...';
+  btn.disabled = true;
+  apiPost('/api/v1/rag-hub/sync', {})
+    .then(function(json) {
+      if (json && json.success) {
+        var results = json.results || [];
+        var msg = results.map(function(r) {
+          return r.module + ': 新增 ' + r.new_count + ' 条';
+        }).join('\n');
+        alert('同步完成\n\n' + msg);
+        loadModules();
+      } else {
+        alert('同步失败: ' + (json && json.error ? json.error : '未知错误'));
+      }
+    })
+    .catch(function(err) {
+      alert('同步失败: ' + err.message);
+    })
+    .finally(function() {
+      btn.textContent = '立即同步';
+      btn.disabled = false;
+    });
+}
+
+/* ─── Sync Single Module ─── */
+function syncModule(moduleId, btn) {
+  var origText = btn.textContent;
+  btn.textContent = '同步中...';
+  btn.disabled = true;
+  apiPost('/api/v1/rag-hub/sync', { module_id: moduleId })
+    .then(function(json) {
+      if (json && json.success) {
+        var r = json.result || {};
+        alert('同步完成\n新增 ' + (r.new_count || 0) + ' 条，总计 ' + (r.total || 0) + ' 条');
+        loadModules();
+        if (_currentModule) loadModuleDetail(moduleId);
+      } else {
+        alert('同步失败: ' + (json && json.error ? json.error : '未知错误'));
+      }
+    })
+    .catch(function(err) {
+      alert('同步失败: ' + err.message);
+    })
+    .finally(function() {
+      btn.textContent = origText;
+      btn.disabled = false;
+    });
+}
+
+/* ─── LLM Search ─── */
+function llmSearch(moduleId, query, useLLM, resultDiv) {
+  resultDiv.innerHTML = '<div class="spinner" style="width:20px;height:20px;border-width:2px;"></div><span style="color:var(--text-muted);font-size:12px;margin-left:8px;">搜索中...</span>';
+  apiPost('/api/v1/rag-hub/search', {
+    module_id: moduleId,
+    query: query,
+    use_llm: useLLM,
+    limit: 5
+  })
+    .then(function(json) {
+      if (json && json.success) {
+        var keywords = json.expanded_keywords || [];
+        var results = json.results || [];
+        var html = '';
+        if (keywords.length > 1) {
+          html += '<div style="font-size:11px;color:var(--accent-cyan);margin-bottom:8px;">LLM 扩展词: ' + keywords.join(', ') + '</div>';
+        }
+        if (results.length === 0) {
+          html += '<div style="color:var(--text-muted);font-size:13px;">无匹配结果</div>';
+        } else {
+          results.forEach(function(r, i) {
+            var preview = r.text || r.content || r.item || '';
+            if (preview.length > 200) preview = preview.substring(0, 200) + '...';
+            html += '<div style="background:rgba(37,99,235,0.05);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:6px;font-size:12px;color:var(--text-secondary);">' +
+              '<div style="color:var(--text-primary);font-weight:500;margin-bottom:2px;">' + (r.title || r.source_file || r.item || 'Result ' + (i+1)) + '</div>' +
+              '<div>' + preview + '</div>' +
+              '</div>';
+          });
+        }
+        resultDiv.innerHTML = html;
+      } else {
+        resultDiv.innerHTML = '<div style="color:var(--accent-rose);font-size:12px;">搜索失败</div>';
+      }
+    })
+    .catch(function(err) {
+      resultDiv.innerHTML = '<div style="color:var(--accent-rose);font-size:12px;">搜索失败: ' + err.message + '</div>';
+    });
+}
+
+/* ─── Bind Sync Button ─── */
+document.addEventListener('DOMContentLoaded', function() {
+  var btn = document.getElementById('syncAllBtn');
+  if (btn) btn.addEventListener('click', syncAll);
+});
+
+/* ─── Update Stats ─── */
+function updateStats() {
+  var total = 0, active = 0, planned = 0;
+  _modules.forEach(function(m) {
+    if (m.status === 'active') {
+      active++;
+      total += (m.record_count || 0);
+    } else if (m.status === 'planned') {
+      planned++;
+    }
+  });
+  document.getElementById('totalRecords').textContent = total;
+  document.getElementById('activeModules').textContent = active;
+  document.getElementById('plannedModules').textContent = planned;
+}
+
+/* ─── Icon Mapping ─── */
+function getIconClass(moduleId) {
+  var map = {
+    'financial_rag': 'blue',
+    'consumer_price_rag': 'green',
+    'report_rag': 'amber',
+    'tax_rag': 'rose',
+    'insurance_rag': 'cyan',
+    'estate_rag': 'violet'
+  };
+  return map[moduleId] || 'blue';
+}
+
+function getIconGlyph(moduleId) {
+  var map = {
+    'financial_rag': '$',
+    'consumer_price_rag': '%',
+    'report_rag': '#',
+    'tax_rag': 'T',
+    'insurance_rag': 'I',
+    'estate_rag': 'E'
+  };
+  return map[moduleId] || '?';
+}
+
+/* ─── Privacy Level Badge ─── */
+function privacyBadge(level) {
+  var cls = 'badge-privacy-' + (level || 'low');
+  var label = { high: 'High', medium: 'Medium', low: 'Low' };
+  return '<span class="badge ' + cls + '">' + (label[level] || level) + '</span>';
+}
+
+/* ─── Status Badge ─── */
+function statusBadge(status) {
+  if (status === 'active') return '<span class="badge badge-active">Active</span>';
+  return '<span class="badge badge-planned">Planned</span>';
+}
+
+/* ─── Render Module Grid ─── */
+function renderModuleGrid(modules) {
+  var grid = document.getElementById('moduleGrid');
+  if (!modules || modules.length === 0) {
+    grid.innerHTML = '<div class="empty-state">暂无模块数据</div>';
+    return;
+  }
+  var html = '';
+  modules.forEach(function(m) {
+    var isActive = m.status === 'active';
+    var iconCls = getIconClass(m.id || m.module_id);
+    var iconGlyph = getIconGlyph(m.id || m.module_id);
+    var cardCls = isActive ? 'module-card' : 'module-card planned';
+    var privacy = m.privacy_level || 'low';
+    var rc = m.record_count || 0;
+
+    html += '<div class="' + cardCls + '" data-module-id="' + (m.id || m.module_id) + '" data-status="' + m.status + '"'
+      + (isActive ? ' onclick="openDetail(\'' + (m.id || m.module_id) + '\')"' : ' onclick="showPlanned(\'' + (m.id || m.module_id) + '\')"')
+      + '>';
+
+    html += '<div class="card-top">';
+    html += '  <div class="card-icon ' + iconCls + '">' + iconGlyph + '</div>';
+    html += '  <div class="card-badges">';
+    html += statusBadge(m.status);
+    html += privacyBadge(privacy);
+    html += '  </div>';
+    html += '</div>';
+
+    html += '<div class="card-name">' + escHtml(m.name) + '</div>';
+    html += '<div class="card-desc">' + escHtml(m.description || '') + '</div>';
+
+    html += '<div class="card-footer">';
+    html += '  <div style="display:flex;align-items:center;">';
+    html += '    <div class="card-status-dot ' + m.status + '"></div>';
+    html += '    <span class="card-status-text">' + (isActive ? '运行中' : '规划中') + '</span>';
+    if (isActive && m.last_sync) {
+      html += '  <span style="font-size:10px;color:var(--text-muted);margin-left:8px;">同步: ' + m.last_sync.substring(11, 16) + '</span>';
+    }
+    html += '  </div>';
+    if (isActive) {
+      html += '  <div class="card-record-count"><span>' + rc + '</span> 条</div>';
+    }
+    html += '</div>';
+
+    if (!isActive) {
+      html += '<div class="planned-overlay">规划中</div>';
+    }
+
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+/* ─── HTML Escape ─── */
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ─── Open Detail Panel ─── */
+function openDetail(moduleId) {
+  var panel = document.getElementById('detailPanel');
+  var overlay = document.getElementById('detailOverlay');
+  var body = document.getElementById('detailBody');
+
+  panel.classList.add('open');
+  overlay.classList.add('open');
+  body.innerHTML = '<div class="loading-indicator"><div class="spinner"></div><span>正在加载模块详情...</span></div>';
+
+  var mod = _modules.find(function(m) { return (m.id || m.module_id) === moduleId; });
+  var iconCls = getIconClass(moduleId);
+  var iconGlyph = getIconGlyph(moduleId);
+  document.getElementById('detailIcon').className = 'card-icon ' + iconCls;
+  document.getElementById('detailIcon').textContent = iconGlyph;
+  document.getElementById('detailTitle').textContent = mod ? mod.name : moduleId;
+
+  apiGet('/api/v1/rag-hub/modules/' + moduleId)
+    .then(function(json) {
+      var detail = (json && json.success && json.module) ? json.module : null;
+      renderDetail(moduleId, detail);
+    })
+    .catch(function(err) {
+      body.innerHTML = '<div class="error-msg">加载详情失败: ' + err.message + '</div>';
+    });
+}
+
+/* ─── Close Detail Panel ─── */
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  document.getElementById('detailOverlay').classList.remove('open');
+}
+
+document.getElementById('detailClose').addEventListener('click', closeDetail);
+document.getElementById('detailOverlay').addEventListener('click', closeDetail);
+
+/* ─── Render Detail ─── */
+function renderDetail(moduleId, detail) {
+  var body = document.getElementById('detailBody');
+  var status = detail.status || 'active';
+  var privacy = detail.privacy_level || 'low';
+
+  var html = '';
+
+  // Description
+  html += '<div class="detail-desc">' + escHtml(detail.description || '') + '</div>';
+
+  // Badges
+  html += '<div class="detail-badges">';
+  html += statusBadge(status);
+  html += privacyBadge(privacy);
+  if (detail.record_count !== undefined) {
+    html += '<span class="badge badge-count">' + detail.record_count + ' 条记录</span>';
+  }
+  html += '</div>';
+
+  // Sync button for active modules
+  if (status === 'active') {
+    html += '<button id="syncModuleBtn" style="background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.3);color:var(--accent-sec);border-radius:var(--radius-sm);padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:16px;transition:background 0.2s;" onmouseover="this.style.background=\'rgba(37,99,235,0.25)\'" onmouseout="this.style.background=\'rgba(37,99,235,0.15)\'" onclick="syncModule(\'' + moduleId + '\', this)">同步此模块</button>';
+  }
+
+  // Logic (collapsible)
+  if (detail.logic) {
+    html += '<div class="collapse-section">';
+    html += '  <div class="collapse-header" onclick="toggleCollapse(this)">';
+    html += '    <span class="collapse-header-title">业务逻辑</span>';
+    html += '    <span class="collapse-arrow">&#9654;</span>';
+    html += '  </div>';
+    html += '  <div class="collapse-content"><pre>' + escHtml(detail.logic) + '</pre></div>';
+    html += '</div>';
+  }
+
+  // Tech Params
+  html += '<div class="section-title">技术参数</div>';
+  html += '<div class="tech-params">';
+  var techItems = [
+    { label: '存储后端', value: detail.storage_backend || '--' },
+    { label: '集合名', value: detail.collection_name || '--' },
+    { label: '嵌入模型', value: detail.embedding_model || '--' },
+    { label: '隐私等级', value: detail.privacy_level || '--' }
+  ];
+  techItems.forEach(function(item) {
+    html += '<div class="tech-param">';
+    html += '  <div class="tech-param-label">' + item.label + '</div>';
+    html += '  <div class="tech-param-value">' + escHtml(item.value) + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Sources & Consumers
+  if (detail.data_sources || detail.consumers) {
+    html += '<div class="tags-section">';
+    if (detail.data_sources && detail.data_sources.length > 0) {
+      html += '<div class="tags-group">';
+      html += '  <div class="tags-group-label">数据来源</div>';
+      html += '  <div class="tags-list">';
+      detail.data_sources.forEach(function(s) {
+        html += '<span class="tag source">' + escHtml(s) + '</span>';
+      });
+      html += '  </div>';
+      html += '</div>';
+    }
+    if (detail.consumers && detail.consumers.length > 0) {
+      html += '<div class="tags-group">';
+      html += '  <div class="tags-group-label">消费方</div>';
+      html += '  <div class="tags-list">';
+      detail.consumers.forEach(function(c) {
+        html += '<span class="tag consumer">' + escHtml(c) + '</span>';
+      });
+      html += '  </div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Records Table
+  html += '<div class="section-title">记录列表</div>';
+  html += '<div id="recordsContainer"><div class="loading-indicator"><div class="spinner"></div><span>正在加载记录...</span></div></div>';
+
+  body.innerHTML = html;
+
+  // Load records
+  loadRecords(moduleId);
+
+  // Load vectors
+  loadVectors(moduleId, '');
+}
+
+/* ─── Toggle Collapse ─── */
+function toggleCollapse(headerEl) {
+  var content = headerEl.nextElementSibling;
+  var arrow = headerEl.querySelector('.collapse-arrow');
+  content.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+/* ─── Load Records ─── */
+function loadRecords(moduleId) {
+  var container = document.getElementById('recordsContainer');
+  if (!container) return;
+
+  apiGet('/api/v1/rag-hub/modules/' + moduleId + '/records')
+    .then(function(json) {
+      var records = (json && json.success && json.records) ? json.records : [];
+      if (!records || records.length === 0) {
+        container.innerHTML = '<div class="empty-state">暂无记录</div>';
+        return;
+      }
+      var html = '<div class="table-wrapper"><table>';
+      html += '<thead><tr>';
+      html += '<th>ID</th>';
+      html += '<th>内容预览</th>';
+      html += '<th>来源</th>';
+      html += '<th>创建时间</th>';
+      html += '<th>操作</th>';
+      html += '</tr></thead><tbody>';
+      records.forEach(function(r) {
+        var rid = r.id || r.record_id || r._id || '';
+        var preview = r.content || r.text || r.title || '';
+        var source = r.source || r.source_file || r.file_name || '--';
+        var created = r.created_at || r.inserted_at || r.timestamp || r.synced_at || '--';
+
+        // 消费支出记录特殊展示
+        if (r.counterparty !== undefined) {
+          preview = r.counterparty + ' ' + r.amount + '元' + (r.category_primary ? ' [' + r.category_primary + ']' : '');
+          if (r.is_essential === 1) preview = '[必需] ' + preview;
+          else preview = '[弹性] ' + preview;
+          source = r.source_file || '--';
+          created = r.transaction_date || '--';
+        } else if (r.ocr_text !== undefined) {
+          preview = r.ocr_text || '';
+          source = r.source_file || '--';
+          created = r.parsed_at || '--';
+        }
+        if (preview.length > 60) preview = preview.substring(0, 60) + '...';
+
+        html += '<tr>';
+        html += '<td style="font-family:var(--mono);font-size:12px;color:var(--text-muted);">' + escHtml(String(rid).substring(0,12)) + '</td>';
+        html += '<td class="text-preview">' + escHtml(preview) + '</td>';
+        html += '<td>' + escHtml(source) + '</td>';
+        html += '<td style="font-size:12px;">' + escHtml(created) + '</td>';
+        html += '<td><button class="btn-delete" onclick="confirmDelete(\'' + moduleId + '\',\'' + rid + '\')">删除</button></td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    })
+    .catch(function(err) {
+      container.innerHTML = '<div class="error-msg">加载记录失败: ' + err.message + '</div>';
+    });
+}
+
+/* ─── Load Vectors ─── */
+function loadVectors(moduleId, query) {
+  // Ensure we have the vectors section
+  var existing = document.getElementById('vectorsSection');
+  if (!existing) {
+    var body = document.getElementById('detailBody');
+    var html = '<div class="section-title" style="margin-top:24px;">智能检索（FTS5 + LLM 联想）</div>';
+    html += '<div id="vectorsSection">';
+    html += '<div class="vector-search">';
+    html += '<input type="text" id="vectorQueryInput" placeholder="输入搜索词，LLM 将自动扩展同义词..." value="' + escHtml(query) + '" onkeydown="if(event.key===\'Enter\')searchVectors()">';
+    html += '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text-secondary);white-space:nowrap;"><input type="checkbox" id="llmToggle" checked style="margin:0;"> LLM 联想</label>';
+    html += '<button class="btn-search" onclick="searchVectors()">搜索</button>';
+    html += '</div>';
+    html += '<div id="vectorsContainer"><div style="color:var(--text-muted);font-size:12px;">输入关键词后点击搜索</div></div>';
+    html += '</div>';
+    body.insertAdjacentHTML('beforeend', html);
+  }
+
+  var container = document.getElementById('vectorsContainer');
+  container.innerHTML = '<div class="loading-indicator"><div class="spinner"></div><span>正在加载向量数据...</span></div>';
+
+  var url = '/api/v1/rag-hub/modules/' + moduleId + '/vectors';
+  if (query) {
+    url += '?q=' + encodeURIComponent(query);
+  }
+
+  apiGet(url)
+    .then(function(json) {
+      var vectors = (json && json.success && json.vectors) ? json.vectors : [];
+      renderVectorsTable(moduleId, vectors);
+    })
+    .catch(function(err) {
+      container.innerHTML = '<div class="error-msg">加载向量失败: ' + err.message + '</div>';
+    });
+}
+
+/* ─── Search Vectors ─── */
+function searchVectors() {
+  if (!_currentModule) return;
+  var input = document.getElementById('vectorQueryInput');
+  var query = input ? input.value.trim() : '';
+  var llmToggle = document.getElementById('llmToggle');
+  var useLLM = llmToggle ? llmToggle.checked : false;
+  var container = document.getElementById('vectorsContainer');
+
+  if (!query) {
+    loadVectors(_currentModule, '');
+    return;
+  }
+
+  // Use LLM search API if toggle is on
+  if (useLLM) {
+    llmSearch(_currentModule, query, true, container);
+  } else {
+    // Fallback to simple FTS5 search
+    loadVectors(_currentModule, query);
+  }
+}
+
+/* ─── Override openDetail to store current module id ─── */
+(function() {
+  var _origOpenDetail = openDetail;
+  openDetail = function(moduleId) {
+    _currentModule = moduleId;
+    _origOpenDetail(moduleId);
+  };
+})();
+
+/* ─── Render Vectors Table (by module) ─── */
+function renderVectorsTable(moduleId, vectors) {
+  var container = document.getElementById('vectorsContainer');
+  if (!container) return;
+  if (!vectors || vectors.length === 0) {
+    container.innerHTML = '<div class="empty-state">暂无向量数据</div>';
+    return;
+  }
+
+  var html = '<div class="table-wrapper"><table>';
+  html += '<thead><tr>';
+
+  if (moduleId === 'financial_rag') {
+    html += '<th>ID</th><th>文本预览</th><th>距离</th><th>来源文件</th><th>截图类型</th><th>持仓数</th>';
+  } else if (moduleId === 'consumer_price_rag') {
+    html += '<th>商品</th><th>价格</th><th>商家</th><th>区域</th><th>距离</th><th>来源</th>';
+  } else if (moduleId === 'report_rag') {
+    html += '<th>标题</th><th>内容预览</th><th>距离</th><th>时间分</th><th>综合分</th><th>块类型</th>';
+  } else {
+    html += '<th>ID</th><th>文本预览</th><th>距离</th><th>元数据</th>';
+  }
+
+  html += '</tr></thead><tbody>';
+
+  vectors.forEach(function(v) {
+    html += '<tr>';
+
+    if (moduleId === 'financial_rag') {
+      html += '<td style="font-family:var(--mono);font-size:12px;color:var(--text-muted);">' + escHtml((v.id || v._id || '').substring(0,10)) + '</td>';
+      html += '<td class="text-preview">' + escHtml(truncate(v.text || v.content || '', 200)) + '</td>';
+      html += '<td>' + distCell(v.distance || v.score || 0) + '</td>';
+      html += '<td>' + escHtml(v.source_file || v.source || '--') + '</td>';
+      html += '<td>' + escHtml(v.screenshot_type || v.chunk_type || '--') + '</td>';
+      html += '<td style="font-family:var(--mono);">' + escHtml(String(v.holdings_count || v.holdings || '--')) + '</td>';
+    } else if (moduleId === 'consumer_price_rag') {
+      html += '<td>' + escHtml(v.product || v.name || '--') + '</td>';
+      html += '<td style="font-family:var(--mono);">' + escHtml(String(v.price || '--')) + '</td>';
+      html += '<td>' + escHtml(v.merchant || v.seller || '--') + '</td>';
+      html += '<td>' + escHtml(v.region || v.area || '--') + '</td>';
+      html += '<td>' + distCell(v.distance || v.score || 0) + '</td>';
+      html += '<td>' + escHtml(v.source || v.source_file || '--') + '</td>';
+    } else if (moduleId === 'report_rag') {
+      html += '<td>' + escHtml(v.title || '--') + '</td>';
+      html += '<td class="text-preview">' + escHtml(truncate(v.content || v.text || '', 200)) + '</td>';
+      html += '<td>' + distCell(v.distance || v.score || 0) + '</td>';
+      html += '<td style="font-family:var(--mono);">' + escHtml(String(v.time_score || v.time_score || '--')) + '</td>';
+      html += '<td style="font-family:var(--mono);">' + escHtml(String(v.composite_score || v.overall_score || '--')) + '</td>';
+      html += '<td>' + escHtml(v.chunk_type || v.block_type || '--') + '</td>';
+    } else {
+      html += '<td style="font-family:var(--mono);font-size:12px;color:var(--text-muted);">' + escHtml((v.id || v._id || '').substring(0,10)) + '</td>';
+      html += '<td class="text-preview">' + escHtml(truncate(v.text || v.content || '', 200)) + '</td>';
+      html += '<td>' + distCell(v.distance || v.score || 0) + '</td>';
+      html += '<td style="font-size:12px;">' + escHtml(JSON.stringify(v.metadata || {}).substring(0, 80)) + '</td>';
+    }
+
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  container.innerHTML = html;
+}
+
+/* ─── Truncate helper ─── */
+function truncate(str, max) {
+  if (!str) return '';
+  return str.length > max ? str.substring(0, max) + '...' : str;
+}
+
+/* ─── Distance Cell with color coding ─── */
+function distCell(val) {
+  var num = parseFloat(val);
+  if (isNaN(num)) return '<span>' + escHtml(String(val)) + '</span>';
+  var cls = num < 0.5 ? 'dist-low' : num < 0.8 ? 'dist-mid' : 'dist-high';
+  return '<span class="' + cls + '" style="font-family:var(--mono);">' + num.toFixed(4) + '</span>';
+}
+
+/* ─── Show Planned Module ─── */
+function showPlanned(moduleId) {
+  var mod = _modules.find(function(m) { return (m.id || m.module_id) === moduleId; });
+  if (!mod) return;
+  document.getElementById('plannedModalTitle').textContent = mod.name || moduleId;
+  document.getElementById('plannedModalDesc').textContent =
+    mod.planned_description || mod.description || '该模块尚在规划阶段，暂未启用。';
+  document.getElementById('plannedModal').classList.add('open');
+}
+
+document.getElementById('plannedModalClose').addEventListener('click', function() {
+  document.getElementById('plannedModal').classList.remove('open');
+});
+document.getElementById('plannedModal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('open');
+});
+
+/* ─── Confirm Delete ─── */
+function confirmDelete(moduleId, recordId) {
+  _pendingDelete = { moduleId: moduleId, recordId: recordId };
+  document.getElementById('confirmMsg').textContent =
+    '确定要删除记录 ' + String(recordId).substring(0, 12) + ' 吗？此操作不可撤销。';
+  document.getElementById('confirmDialog').classList.add('open');
+}
+
+document.getElementById('confirmCancel').addEventListener('click', function() {
+  _pendingDelete = null;
+  document.getElementById('confirmDialog').classList.remove('open');
+});
+document.getElementById('confirmDialog').addEventListener('click', function(e) {
+  if (e.target === this) {
+    _pendingDelete = null;
+    this.classList.remove('open');
+  }
+});
+document.getElementById('confirmOk').addEventListener('click', function() {
+  if (!_pendingDelete) return;
+  var moduleId = _pendingDelete.moduleId;
+  var recordId = _pendingDelete.recordId;
+  _pendingDelete = null;
+  document.getElementById('confirmDialog').classList.remove('open');
+
+  apiDelete('/api/v1/rag-hub/modules/' + moduleId + '/records/' + recordId)
+    .then(function() {
+      // Reload records and update stats
+      loadRecords(moduleId);
+      loadModules();
+    })
+    .catch(function(err) {
+      alert('删除失败: ' + err.message);
+    });
+});
+
+/* ─── Keyboard: Escape to close panels ─── */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeDetail();
+    document.getElementById('plannedModal').classList.remove('open');
+    document.getElementById('confirmDialog').classList.remove('open');
+  }
+});
+</script>
+<div class="page-container" style="margin-top:40px;padding:0 40px 32px;border-top:1px solid var(--border-color);">
+  <div style="font-size:11px;color:var(--text-muted);line-height:1.7;">
+  <strong style="color:var(--text-secondary);">技术架构说明</strong><br>
+  本系统<strong>未使用 ChromaDB</strong>（Rust 底层库，与 PyInstaller 打包不兼容）。所有 RAG 数据存储在 SQLite + FTS5 全文检索引擎中，零外部依赖，exe 完美兼容。<br>
+  <strong>数据写入与 workflow 完全解耦</strong>：各 workflow（截图处理、研报导入等）只负责提取数据写入 SQLite/JSONL，RAG 同步引擎在后台独立扫描已留存的文本文件并入库。同步支持定时触发（5分钟间隔）和手动触发。<br>
+  <strong>智能检索</strong>：默认使用 FTS5 关键词匹配；开启「LLM 联想」后，搜索时自动调用 LLM 扩展同义词（如「可用余额」→「账户余额/活期/零钱」），弥补纯关键词匹配的不足。<br>
+  <strong>消费价格 RAG 数据来源</strong>：当前仅支持手动录入和小票 OCR（规划中）。消费截图提取的是交易流水（商户+金额），不含商品单价信息，因此不会自动进入价格 RAG。如需录入商品价格，请通过生活管家手动添加。
+  </div>
+</div>
+
+</body>
+</html>

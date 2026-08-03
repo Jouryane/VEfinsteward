@@ -1,0 +1,50 @@
+apps:
+  trae:
+    name: Trae Work
+    path: D:\Trae CN\TRAE SOLO CN\TRAE SOLO CN.exe
+    auto_detect:
+    - C:\Users\{username}\AppData\Local\Programs\Trae\Trae.exe
+    - D:\Trae\Trae.exe
+    launch_args:
+    - '{workspace_dir}'
+    enabled: false
+    description: Trae 官方 IDE，内置 AI 编程能力
+  cursor:
+    name: Cursor
+    path: ''
+    auto_detect:
+    - C:\Users\{username}\AppData\Local\Programs\cursor\Cursor.exe
+    launch_args:
+    - '{workspace_dir}'
+    enabled: false
+    description: Cursor IDE，AI 优先的代码编辑器
+  vscode:
+    name: VS Code
+    path: ''
+    auto_detect:
+    - C:\Users\{username}\AppData\Local\Programs\Microsoft VS Code\Code.exe
+    - C:\Program Files\Microsoft VS Code\Code.exe
+    launch_args:
+    - '{workspace_dir}'
+    enabled: false
+    description: Visual Studio Code（需安装 Copilot 插件）
+  claude:
+    name: Claude Desktop
+    path: ''
+    auto_detect:
+    - C:\Users\{username}\AppData\Local\Claude\Claude.exe
+    launch_args: []
+    enabled: false
+    description: Claude Desktop（无法预载对话，将复制到剪贴板）
+  other:
+    name: 其它
+    path: D:\Trae CN\Trae CN.exe
+    auto_detect: []
+    launch_args:
+    - '{workspace_dir}'
+    enabled: true
+    description: 自定义 AI 编程应用（需手动指定可执行文件路径）
+workspace:
+  default_dir: D:\TRAE_SOLO_download\ve3\ve4\tactical
+  task_filename: strategy_task.md
+  output_subdir: output

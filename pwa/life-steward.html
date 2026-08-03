@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生活管家 — VE5</title>
+<style>
+:root {
+  --bg-primary:#0a0f1a; --bg-secondary:#0f1625; --bg-elevated:#141e30;
+  --text-primary:#e2e8f0; --text-secondary:#94a3b8; --text-muted:#64748b;
+  --accent-blue:#3b82f6; --accent-cyan:#22d3ee; --accent-violet:#8b5cf6;
+  --accent-indigo:#6366f1; --accent-emerald:#10b981; --accent-amber:#f59e0b;
+  --border-subtle:#1e293b; --border-medium:#334155;
+  --sidebar-width:240px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif; background:var(--bg-primary); color:var(--text-primary); display:flex; min-height:100vh; }
+a { text-decoration:none; color:inherit; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width:var(--sidebar-width); flex-shrink:0; background:var(--bg-secondary);
+  border-right:1px solid var(--border-subtle); display:flex; flex-direction:column;
+  padding:16px 0; position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.sidebar-brand { padding:0 16px 16px; display:flex; align-items:center; gap:8px; }
+.sidebar-brand-icon { width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg, var(--accent-blue), var(--accent-cyan)); display:flex; align-items:center; justify-content:center; font-size:16px; }
+.sidebar-brand-text { font-size:15px; font-weight:700; color:var(--text-primary); }
+.sidebar-divider { height:1px; background:var(--border-subtle); margin:4px 12px 12px; }
+
+/* Navigation */
+.sidebar-nav { padding:0 8px; }
+.sidebar-nav-item {
+  display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px;
+  font-size:13px; color:var(--text-secondary); cursor:pointer; transition:all 0.15s;
+  margin-bottom:2px;
+}
+.sidebar-nav-item:hover { background:rgba(59,130,246,0.1); color:var(--text-primary); }
+.sidebar-nav-item.active { background:rgba(59,130,246,0.15); color:var(--accent-blue); font-weight:600; }
+.sidebar-nav-icon { font-size:14px; width:20px; text-align:center; }
+
+/* Category Sections */
+.sidebar-categories { padding:0 8px; flex:1; }
+.sidebar-cat {
+  margin-bottom:4px;
+}
+.sidebar-cat-header {
+  display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px;
+  font-size:13px; color:var(--text-secondary); cursor:pointer; transition:all 0.15s;
+  user-select:none;
+}
+.sidebar-cat-header:hover { background:rgba(59,130,246,0.08); color:var(--text-primary); }
+.sidebar-cat-header.active { color:var(--accent-blue); font-weight:600; }
+.sidebar-cat-icon { font-size:14px; width:20px; text-align:center; }
+.sidebar-cat-toggle { margin-left:auto; font-size:10px; color:var(--text-muted); transition:transform 0.2s; }
+.sidebar-cat.expanded .sidebar-cat-toggle { transform:rotate(180deg); }
+
+/* Category Items */
+.sidebar-cat-items {
+  display:none; padding-left:8px;
+}
+.sidebar-cat.expanded .sidebar-cat-items { display:block; }
+.sidebar-cat-item {
+  display:flex; flex-direction:column; gap:2px; padding:8px 10px 8px 28px;
+  border-radius:6px; cursor:pointer; transition:all 0.15s;
+  border-left:2px solid transparent; margin-bottom:2px;
+}
+.sidebar-cat-item:hover { background:rgba(59,130,246,0.08); }
+.sidebar-cat-item.active { background:rgba(59,130,246,0.12); border-left-color:var(--accent-blue); }
+.sidebar-cat-item-title { font-size:12px; color:var(--text-primary); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar-cat-item-desc { font-size:10px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sidebar-cat-item.empty { font-size:11px; color:var(--text-muted); font-style:italic; cursor:default; }
+.sidebar-cat-item.empty:hover { background:transparent; }
+
+/* ── Main Content ── */
+.main { flex:1; overflow-y:auto; padding:24px 32px; min-width:0; }
+.page-header { margin-bottom:20px; }
+.page-header h1 { font-size:22px; font-weight:700; margin-bottom:4px; }
+.page-header p { font-size:13px; color:var(--text-secondary); }
+
+/* Stats Row */
+.stats-row { display:flex; gap:12px; margin-bottom:24px; }
+.stat-card {
+  flex:1; padding:14px 16px; border-radius:10px; background:var(--bg-elevated);
+  border:1px solid var(--border-subtle);
+}
+.stat-card-value { font-size:24px; font-weight:700; color:var(--accent-blue); }
+.stat-card-label { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+/* Plans Grid */
+.plans-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:14px; }
+.plan-card {
+  background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:12px;
+  padding:18px; transition:all 0.2s; position:relative;
+}
+.plan-card:hover { border-color:var(--border-medium); }
+.plan-card-date { font-size:11px; color:var(--text-muted); margin-bottom:8px; }
+.plan-card-title { font-size:15px; font-weight:700; color:var(--text-primary); margin-bottom:10px; }
+.plan-card-budget { font-size:24px; font-weight:700; color:var(--accent-cyan); margin-bottom:10px; }
+.plan-card-budget span { font-size:12px; font-weight:400; color:var(--text-muted); }
+.plan-card-stats { display:flex; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+.plan-card-stat { display:flex; align-items:center; gap:4px; font-size:12px; color:var(--text-secondary); }
+.plan-card-stat-icon { font-size:13px; }
+.plan-card-actions { display:flex; gap:8px; }
+.plan-card-btn {
+  flex:1; padding:8px 0; border-radius:8px; border:none; font-size:12px; font-weight:600;
+  cursor:pointer; text-align:center; transition:all 0.15s;
+}
+.plan-card-btn.view { background:rgba(59,130,246,0.15); color:var(--accent-blue); }
+.plan-card-btn.view:hover { background:rgba(59,130,246,0.25); }
+.plan-card-btn.delete { background:rgba(239,68,68,0.1); color:#ef4444; }
+.plan-card-btn.delete:hover { background:rgba(239,68,68,0.2); }
+
+/* Detail View (inline) */
+.detail-view {
+  background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:12px;
+  padding:24px; margin-bottom:20px;
+}
+.detail-view-header {
+  display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;
+}
+.detail-view-title { font-size:18px; font-weight:700; }
+.detail-view-date { font-size:12px; color:var(--text-muted); margin-top:4px; }
+.detail-view-back {
+  padding:6px 12px; border-radius:6px; border:1px solid var(--border-medium);
+  background:transparent; color:var(--text-secondary); font-size:12px; cursor:pointer;
+}
+.detail-view-back:hover { border-color:var(--accent-blue); color:var(--accent-blue); }
+.detail-view-section { margin-bottom:20px; }
+.detail-view-section-title { font-size:14px; font-weight:600; color:var(--accent-cyan); margin-bottom:8px; }
+.detail-view-section-content { font-size:13px; color:var(--text-secondary); line-height:1.6; }
+
+/* Goal cards */
+.goal-item {
+  display:flex; align-items:center; gap:12px; padding:12px; border-radius:8px;
+  background:var(--bg-secondary); margin-bottom:8px;
+}
+.goal-item-icon { font-size:20px; }
+.goal-item-info { flex:1; }
+.goal-item-name { font-size:14px; font-weight:600; }
+.goal-item-status { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.goal-item-progress {
+  width:120px; height:6px; border-radius:3px; background:var(--border-subtle); overflow:hidden;
+}
+.goal-item-progress-bar { height:100%; border-radius:3px; background:linear-gradient(90deg, var(--accent-blue), var(--accent-cyan)); }
+.goal-item-pct { font-size:12px; color:var(--text-secondary); width:40px; text-align:right; }
+
+/* Spending chart placeholder */
+.spending-chart { padding:16px; background:var(--bg-secondary); border-radius:8px; }
+.spending-row {
+  display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px;
+}
+.spending-row-name { width:80px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.spending-row-bar-wrap { flex:1; height:16px; background:var(--border-subtle); border-radius:3px; overflow:hidden; }
+.spending-row-bar { height:100%; border-radius:3px; background:linear-gradient(90deg, var(--accent-blue), var(--accent-cyan)); }
+.spending-row-value { width:60px; text-align:right; color:var(--text-primary); font-weight:500; }
+
+/* Empty State */
+.empty-state {
+  text-align:center; padding:60px 20px; color:var(--text-muted);
+}
+.empty-state-icon { font-size:48px; margin-bottom:12px; opacity:0.5; }
+.empty-state-title { font-size:16px; font-weight:600; color:var(--text-secondary); margin-bottom:6px; }
+.empty-state-desc { font-size:13px; line-height:1.5; }
+.empty-state-desc a { color:var(--accent-blue); text-decoration:underline; }
+
+/* Loading */
+.loading { text-align:center; padding:40px; }
+.loading-spinner { width:32px; height:32px; border:3px solid var(--border-subtle); border-top-color:var(--accent-blue); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 12px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-text { font-size:13px; color:var(--text-muted); }
+
+/* Toast */
+.toast {
+  position:fixed; bottom:20px; right:20px; padding:10px 18px; border-radius:8px;
+  font-size:13px; z-index:9999; opacity:0; transform:translateY(10px); transition:all 0.3s;
+  background:var(--bg-elevated); border:1px solid var(--border-medium); color:var(--text-primary);
+}
+.toast.show { opacity:1; transform:translateY(0); }
+.toast.error { border-color:#ef4444; color:#ef4444; }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="sidebar-brand-icon">✦</div>
+    <div class="sidebar-brand-text">VE5</div>
+  </div>
+
+  <div class="sidebar-nav">
+    <a href="index.html" class="sidebar-nav-item">
+      <span class="sidebar-nav-icon">🏠</span>
+      <span>首页</span>
+    </a>
+  </div>
+
+  <div class="sidebar-divider"></div>
+
+  <div class="sidebar-categories" id="sidebarCategories">
+    <!-- 动态填充 -->
+  </div>
+</aside>
+
+<!-- ── Main Content ── -->
+<main class="main">
+  <div class="page-header">
+    <h1>✦ 生活管家</h1>
+    <p>由 VE 管家生成的 Life-plan 页面管理中枢。所有报告均来自 AI 分析你的财务数据后生成。</p>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="stats-row" id="statsRow" style="display:none;">
+    <div class="stat-card">
+      <div class="stat-card-value" id="statTotal">0</div>
+      <div class="stat-card-label">历史报告总数</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-value" id="statLifePlan">0</div>
+      <div class="stat-card-label">生活规划</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-value" id="statSpending">0</div>
+      <div class="stat-card-label">消费分析</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-value" id="statGoal">0</div>
+      <div class="stat-card-label">目标追踪</div>
+    </div>
+  </div>
+
+  <!-- Content Area -->
+  <div id="mainContent">
+    <div class="loading" id="loadingView">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">加载报告列表...</div>
+    </div>
+  </div>
+</main>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Config ──
+const CATEGORIES = {
+  life_plan: { label: '生活计划', icon: '📅', expanded: true },
+  goal:      { label: '目标追踪', icon: '🎯', expanded: false },
+  spending:  { label: '消费分析', icon: '📊', expanded: false },
+};
+
+// ── State ──
+let _allReports = [];
+let _currentCategory = 'life_plan';
+let _currentReportId = null;
+
+// ── Token ──
+const _ve5_token = (() => {
+  const m = window.location.search.match(/ve5_token=([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : '';
+})();
+
+// ── Fetch wrapper ──
+async function ve5_fetch(url, opts) {
+  const options = { ...opts };
+  if (_ve5_token) {
+    options.headers = options.headers || {};
+    options.headers['x-ve5-token'] = _ve5_token;
+  }
+  const sep = url.includes('?') ? '&' : '?';
+  return fetch(url + sep + '_t=' + Date.now(), options);
+}
+
+// ── Toast ──
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (isError ? 'error' : '');
+  setTimeout(() => { t.classList.add('show'); }, 10);
+  setTimeout(() => { t.classList.remove('show'); }, 2500);
+}
+
+// ── Build sidebar categories ──
+function renderSidebar() {
+  const container = document.getElementById('sidebarCategories');
+
+  // Group reports by type
+  const byType = {};
+  for (const r of _allReports) {
+    const t = r.type || 'unknown';
+    if (!byType[t]) byType[t] = [];
+    byType[t].push(r);
+  }
+
+  let html = '';
+  for (const [type, cfg] of Object.entries(CATEGORIES)) {
+    const items = byType[type] || [];
+    const isActive = _currentCategory === type;
+    const isExpanded = cfg.expanded || isActive;
+
+    html += `
+      <div class="sidebar-cat ${isExpanded ? 'expanded' : ''}" data-cat="${type}">
+        <div class="sidebar-cat-header ${isActive ? 'active' : ''}" onclick="selectCategory('${type}')">
+          <span class="sidebar-cat-icon">${cfg.icon}</span>
+          <span>${cfg.label}</span>
+          <span class="sidebar-cat-toggle" onclick="event.stopPropagation(); toggleCategory('${type}')">▼</span>
+        </div>
+        <div class="sidebar-cat-items">
+          ${items.length === 0
+            ? `<div class="sidebar-cat-item empty">暂无记录</div>`
+            : items.map(r => {
+                const desc = buildItemDesc(type, r);
+                return `<div class="sidebar-cat-item ${_currentReportId === r.report_id ? 'active' : ''}" onclick="selectReport('${type}', '${r.report_id}')">
+                  <div class="sidebar-cat-item-title">${r.title || r.report_id}</div>
+                  <div class="sidebar-cat-item-desc">${desc}</div>
+                </div>`;
+              }).join('')
+          }
+        </div>
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+}
+
+function buildItemDesc(type, r) {
+  const parts = [];
+  if (r.created_at) parts.push(r.created_at.slice(0, 10));
+  if (type === 'life_plan') {
+    if (r.location) parts.push(r.location);
+    if (r.tier) parts.push(r.tier);
+    if (r.weekly_budget) parts.push('¥' + r.weekly_budget.toLocaleString() + '/周');
+  } else if (type === 'spending') {
+    if (r.total) parts.push('¥' + r.total.toLocaleString());
+    if (r.transaction_count) parts.push(r.transaction_count + '笔');
+    if (r.top_category) parts.push(r.top_category + '最多');
+  } else if (type === 'goal') {
+    if (r.goal_count) parts.push(r.goal_count + '个目标');
+    if (r.achieved != null) parts.push(r.achieved + '达成');
+  }
+  return parts.join(' · ') || '—';
+}
+
+function toggleCategory(type) {
+  const catEl = document.querySelector(`.sidebar-cat[data-cat="${type}"]`);
+  if (catEl) catEl.classList.toggle('expanded');
+}
+
+function selectCategory(type) {
+  _currentCategory = type;
+  _currentReportId = null;
+  renderSidebar();
+  renderMainContent();
+}
+
+// ── Select report ──
+async function selectReport(type, reportId) {
+  _currentCategory = type;
+  _currentReportId = reportId;
+  renderSidebar();
+
+  // 生活计划 -> 跳转到 chatbot-result.html（同页面跳转，pywebview兼容）
+  if (type === 'life_plan') {
+    const sep = _ve5_token ? '?ve5_token=' + _ve5_token + '&' : '?';
+    window.location.href = 'chatbot-result.html' + sep + 'report_id=' + encodeURIComponent(reportId) + '&_t=' + Date.now();
+    return;
+  }
+
+  // 其他类型 -> 在主区域显示详情
+  await renderReportDetail(type, reportId);
+}
+
+// ── Render main content ──
+function renderMainContent() {
+  const container = document.getElementById('mainContent');
+  const byType = {};
+  for (const r of _allReports) {
+    const t = r.type || 'unknown';
+    if (!byType[t]) byType[t] = [];
+    byType[t].push(r);
+  }
+  const items = byType[_currentCategory] || [];
+
+  updateStats();
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">${CATEGORIES[_currentCategory].icon}</div>
+        <div class="empty-state-title">还没有${CATEGORIES[_currentCategory].label}记录</div>
+        <div class="empty-state-desc">
+          去 <a href="index.html">首页</a> 打开 VE 管家，选择「${CATEGORIES[_currentCategory].label}」生成你的第一份报告吧。
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Cards grid
+  const cards = items.map(r => buildCardHtml(_currentCategory, r)).join('');
+  container.innerHTML = `<div class="plans-grid">${cards}</div>`;
+}
+
+function buildCardHtml(type, r) {
+  if (type === 'life_plan') {
+    return `
+      <div class="plan-card" data-report-id="${r.report_id}">
+        <div class="plan-card-date">${r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : ''}</div>
+        <div class="plan-card-title">${r.title || '生活规划'}</div>
+        <div class="plan-card-budget">¥${(r.weekly_budget || 0).toLocaleString()} <span>/ 周预算</span></div>
+        <div class="plan-card-stats">
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">📅</span> ${r.recipes_count || 0} 天食谱</div>
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">🛒</span> ${r.shopping_count || 0} 项购物</div>
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">🎮</span> ${r.entertainment_count || 0} 项娱乐</div>
+        </div>
+        <div class="plan-card-actions">
+          <button class="plan-card-btn view" onclick="selectReport('life_plan', '${r.report_id}')">查看详情</button>
+          <button class="plan-card-btn delete" onclick="deleteReport('${r.report_id}', this)">删除</button>
+        </div>
+      </div>`;
+  } else if (type === 'spending') {
+    return `
+      <div class="plan-card" data-report-id="${r.report_id}">
+        <div class="plan-card-date">${r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : ''}</div>
+        <div class="plan-card-title">${r.title || '消费分析'}</div>
+        <div class="plan-card-budget">¥${(r.total || 0).toLocaleString()} <span>/ 月支出</span></div>
+        <div class="plan-card-stats">
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">💰</span> 必需 ¥${(r.essential || 0).toLocaleString()}</div>
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">📈</span> ${r.transaction_count || 0} 笔交易</div>
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">🏪</span> ${r.top_category || '—'}</div>
+        </div>
+        <div class="plan-card-actions">
+          <button class="plan-card-btn view" onclick="selectReport('spending', '${r.report_id}')">查看详情</button>
+          <button class="plan-card-btn delete" onclick="deleteReport('${r.report_id}', this)">删除</button>
+        </div>
+      </div>`;
+  } else if (type === 'goal') {
+    return `
+      <div class="plan-card" data-report-id="${r.report_id}">
+        <div class="plan-card-date">${r.created_at ? r.created_at.slice(0, 16).replace('T', ' ') : ''}</div>
+        <div class="plan-card-title">${r.title || '目标追踪'}</div>
+        <div class="plan-card-budget">${r.goal_count || 0} <span>/ 个目标</span></div>
+        <div class="plan-card-stats">
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">✅</span> ${r.achieved || 0} 已达成</div>
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">🔄</span> ${(r.goal_count || 0) - (r.achieved || 0)} 进行中</div>
+          <div class="plan-card-stat"><span class="plan-card-stat-icon">💰</span> 总资产 ¥${(r.total_assets || 0).toLocaleString()}</div>
+        </div>
+        <div class="plan-card-actions">
+          <button class="plan-card-btn view" onclick="selectReport('goal', '${r.report_id}')">查看详情</button>
+          <button class="plan-card-btn delete" onclick="deleteReport('${r.report_id}', this)">删除</button>
+        </div>
+      </div>`;
+  }
+  return '';
+}
+
+// ── Render report detail inline ──
+async function renderReportDetail(type, reportId) {
+  const container = document.getElementById('mainContent');
+  container.innerHTML = `
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">加载报告详情...</div>
+    </div>`;
+
+  try {
+    const resp = await ve5_fetch('/api/v1/chatbot/reports/' + encodeURIComponent(reportId));
+    const json = await resp.json();
+    if (!json.success || !json.data) throw new Error(json.error || '加载失败');
+
+    const report = json.data;
+    const meta = report.metadata || {};
+    const data = report.data || {};
+
+    let content = '';
+    if (type === 'spending') {
+      content = renderSpendingDetail(data, meta);
+    } else if (type === 'goal') {
+      content = renderGoalDetail(data, meta);
+    } else {
+      content = '<div class="detail-view-section-content">此报告类型暂不支持内联预览，请点击「查看详情」在新页面中打开。</div>';
+    }
+
+    container.innerHTML = `
+      <div class="detail-view">
+        <div class="detail-view-header">
+          <div>
+            <div class="detail-view-title">${meta.title || '报告详情'}</div>
+            <div class="detail-view-date">${meta.created_at || report.created_at || ''}</div>
+          </div>
+          <button class="detail-view-back" onclick="backToList()">← 返回列表</button>
+        </div>
+        ${content}
+        <div style="margin-top:16px; display:flex; gap:8px;">
+          <button class="plan-card-btn delete" onclick="deleteReport('${reportId}', null); backToList();">删除此报告</button>
+        </div>
+      </div>
+    `;
+  } catch (err) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">⚠️</div>
+        <div class="empty-state-title">加载失败</div>
+        <div class="empty-state-desc">${err.message}</div>
+        <button class="detail-view-back" onclick="backToList()" style="margin-top:12px;">← 返回列表</button>
+      </div>`;
+  }
+}
+
+function renderSpendingDetail(data, meta) {
+  const current = data.current_month || {};
+  const cats = current.categories || [];
+  const total = current.total || 1;
+
+  let chart = '';
+  for (const c of cats.slice(0, 8)) {
+    const pct = Math.round((c.amount / total) * 100);
+    chart += `
+      <div class="spending-row">
+        <div class="spending-row-name">${c.name}</div>
+        <div class="spending-row-bar-wrap"><div class="spending-row-bar" style="width:${pct}%"></div></div>
+        <div class="spending-row-value">¥${(c.amount || 0).toLocaleString()}</div>
+      </div>`;
+  }
+
+  return `
+    <div class="detail-view-section">
+      <div class="detail-view-section-title">📊 支出概览</div>
+      <div class="detail-view-section-content">
+        月总支出：<strong>¥${(current.total || 0).toLocaleString()}</strong> &nbsp;|&nbsp;
+        必需支出：<strong>¥${(current.essential || 0).toLocaleString()}</strong> &nbsp;|&nbsp;
+        弹性支出：<strong>¥${(current.non_essential || 0).toLocaleString()}</strong>
+      </div>
+    </div>
+    <div class="detail-view-section">
+      <div class="detail-view-section-title">📈 分类明细</div>
+      <div class="spending-chart">${chart || '<div style="color:var(--text-muted);font-size:12px;">暂无分类数据</div>'}</div>
+    </div>
+  `;
+}
+
+function renderGoalDetail(data, meta) {
+  const goals = data.goals || [];
+  let items = '';
+  for (const g of goals) {
+    const barColor = g.status === '已达成' ? '#10b981' : g.status === '进行中' ? '#3b82f6' : '#64748b';
+    items += `
+      <div class="goal-item">
+        <div class="goal-item-icon">${g.icon || '🎯'}</div>
+        <div class="goal-item-info">
+          <div class="goal-item-name">${g.name || '未命名目标'}</div>
+          <div class="goal-item-status">目标 ¥${(g.estimated_cost || 0).toLocaleString()} · ${g.status || '未开始'}${g.months_needed > 0 ? ' · 预计' + g.months_needed + '个月' : ''}</div>
+        </div>
+        <div class="goal-item-progress"><div class="goal-item-progress-bar" style="width:${Math.min(100, g.progress_pct || 0)}%; background:${barColor}"></div></div>
+        <div class="goal-item-pct">${Math.round(g.progress_pct || 0)}%</div>
+      </div>`;
+  }
+
+  return `
+    <div class="detail-view-section">
+      <div class="detail-view-section-title">🎯 目标进度</div>
+      <div class="detail-view-section-content">
+        总资产：<strong>¥${(data.finance?.total_assets || 0).toLocaleString()}</strong> &nbsp;|&nbsp;
+        月结余：<strong>¥${(data.finance?.monthly_savings || 0).toLocaleString()}</strong>
+      </div>
+    </div>
+    <div class="detail-view-section">
+      ${items || '<div style="color:var(--text-muted);font-size:12px;">暂无目标数据</div>'}
+    </div>
+  `;
+}
+
+function backToList() {
+  _currentReportId = null;
+  renderSidebar();
+  renderMainContent();
+}
+
+// ── Stats ──
+function updateStats() {
+  const stats = document.getElementById('statsRow');
+  const byType = {};
+  for (const r of _allReports) {
+    const t = r.type || 'unknown';
+    if (!byType[t]) byType[t] = [];
+    byType[t].push(r);
+  }
+
+  document.getElementById('statTotal').textContent = _allReports.length;
+  document.getElementById('statLifePlan').textContent = (byType.life_plan || []).length;
+  document.getElementById('statSpending').textContent = (byType.spending || []).length;
+  document.getElementById('statGoal').textContent = (byType.goal || []).length;
+
+  stats.style.display = _allReports.length > 0 ? 'flex' : 'none';
+}
+
+// ── Delete report ──
+async function deleteReport(reportId, btn) {
+  if (!confirm('确定要删除这份报告吗？此操作不可恢复。')) return;
+  if (btn) { btn.disabled = true; btn.textContent = '删除中...'; }
+  try {
+    const resp = await ve5_fetch('/api/v1/chatbot/reports/' + encodeURIComponent(reportId), { method: 'DELETE' });
+    const json = await resp.json();
+    if (json.success) {
+      showToast('报告已删除');
+      _allReports = _allReports.filter(r => r.report_id !== reportId);
+      if (_currentReportId === reportId) {
+        _currentReportId = null;
+        backToList();
+      } else {
+        renderSidebar();
+        renderMainContent();
+      }
+    } else {
+      showToast('删除失败: ' + (json.error || '未知错误'), true);
+      if (btn) { btn.disabled = false; btn.textContent = '删除'; }
+    }
+  } catch (err) {
+    showToast('网络错误', true);
+    if (btn) { btn.disabled = false; btn.textContent = '删除'; }
+  }
+}
+
+// ── Load all reports ──
+async function loadAllReports() {
+  const loading = document.getElementById('loadingView');
+  try {
+    const resp = await ve5_fetch('/api/v1/chatbot/reports');
+    const json = await resp.json();
+    if (json.success && json.reports) {
+      _allReports = json.reports;
+    } else {
+      _allReports = [];
+    }
+  } catch (err) {
+    console.error('loadAllReports error:', err);
+    _allReports = [];
+  }
+
+  renderSidebar();
+  renderMainContent();
+}
+
+// ── Init ──
+loadAllReports();
+</script>
+</body>
+</html>

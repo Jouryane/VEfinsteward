@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>VE5 — 战术规划</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── Design Tokens（与 asset-allocation.html 一致） ─── */
+:root {
+  --bg-deep: #050a14;
+  --bg-surface: #0b1321;
+  --bg-elevated: #111d2e;
+  --bg-inset: #0d1526;
+  --border-subtle: rgba(148,163,184,0.06);
+  --border-active: rgba(99,102,241,0.35);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-cyan: #22d3ee;
+  --accent-indigo: #6366f1;
+  --accent-emerald: #34d399;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --mono: 'JetBrains Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  height: 100%; font-family: 'Inter', 'Noto Sans SC', -apple-system, sans-serif;
+  background: var(--bg-deep); color: var(--text-primary);
+}
+
+/* ─── Grid Background ─── */
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image: linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+  background-size: 60px 60px; pointer-events: none; z-index: 0;
+}
+
+/* ─── App Shell ─── */
+.app { display: flex; min-height: 100vh; width: 100vw; position: relative; z-index: 1; }
+
+/* ─── Sidebar（与 tactical-sandbox.html 一致） ─── */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(11,19,33,0.98) 100%);
+  border-right: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column;
+  padding: 28px 18px; flex-shrink: 0;
+  position: fixed; height: 100vh; overflow-y: auto; z-index: 100;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.15); border-radius: 3px; }
+.sidebar::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-indigo), transparent);
+  opacity: 0.4;
+}
+
+.brand {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 10px 28px; border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 20px;
+}
+.brand-mark {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 15px; color: white;
+}
+.brand-title { font-size: 19px; font-weight: 700; letter-spacing: -0.5px; }
+
+.nav-section { margin-bottom: 24px; }
+.nav-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); padding: 0 10px; margin-bottom: 10px; font-weight: 600;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.25s; margin-bottom: 3px;
+  border: 1px solid transparent; text-decoration: none;
+}
+.nav-item:hover {
+  background: rgba(255,255,255,0.04); color: var(--text-primary); transform: translateX(2px);
+}
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(34,211,238,0.06));
+  color: var(--accent-indigo); border-color: var(--border-active);
+}
+.nav-icon {
+  width: 20px; height: 20px; display: flex; align-items: center;
+  justify-content: center; font-size: 14px;
+}
+.nav-item.active .nav-icon { color: var(--accent-cyan); }
+
+.brand-sub {
+  font-size: 11px; color: var(--text-muted); font-weight: 400;
+  margin-top: 3px; font-family: var(--mono);
+}
+
+/* grayed-out nav item */
+.nav-item-disabled {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  color: var(--text-muted); font-size: 13px; font-weight: 500;
+  margin-bottom: 3px; opacity: 0.45;
+  border: 1px solid transparent;
+  cursor: default; user-select: none;
+}
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 10px; padding: 3px 8px; border-radius: 10px;
+  background: rgba(34,211,238,0.1); color: var(--accent-cyan);
+  font-weight: 700; font-family: var(--mono);
+}
+
+.nav-badge.warn {
+  background: rgba(245,158,11,0.1); color: var(--accent-amber);
+}
+
+/* ─── Bluetooth Status ─── */
+.bt-status {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(34,211,238,0.05), rgba(99,102,241,0.03));
+  border: 1px solid rgba(34,211,238,0.1);
+  margin-top: auto;
+}
+
+.bt-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(34,211,238,0.5);
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.bt-label {
+  font-size: 12px; font-weight: 700; color: var(--accent-cyan);
+}
+
+.bt-meta {
+  font-size: 11px; color: var(--text-muted); margin-left: auto;
+  font-family: var(--mono);
+}
+
+/* ─── Main ─── */
+.main {
+  flex: 1; margin-left: 260px; padding: 32px 36px; min-height: 100vh;
+}
+
+/* ─── Header ─── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 32px;
+}
+.header-title {
+  font-size: 26px; font-weight: 700; letter-spacing: -0.3px;
+  display: flex; align-items: center; gap: 12px;
+}
+.header-title::before {
+  content: ''; width: 4px; height: 28px;
+  background: linear-gradient(180deg, var(--accent-indigo), var(--accent-cyan));
+  border-radius: 2px;
+}
+.header-time {
+  font-size: 12px; color: var(--text-muted); font-family: var(--mono);
+}
+
+/* ─── Surface Card ─── */
+.surface {
+  background: linear-gradient(180deg, var(--bg-elevated), rgba(13,20,33,0.95));
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  padding: 28px; position: relative; overflow: hidden;
+}
+.surface::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99,102,241,0.18), transparent);
+}
+.surface-title {
+  font-size: 14px; font-weight: 600; display: flex; align-items: center;
+  gap: 8px; margin-bottom: 20px;
+}
+.surface-title::before {
+  content: ''; width: 3px; height: 16px;
+  background: linear-gradient(180deg, var(--accent-indigo), var(--accent-cyan));
+  border-radius: 2px;
+}
+
+/* ─── Section Title ─── */
+.section-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1.8px;
+  color: var(--text-muted); margin: 32px 0 18px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--border-subtle), transparent);
+}
+
+/* ─── Sunburst Area ─── */
+.sunburst-section { margin-bottom: 28px; }
+.sunburst-wrap {
+  display: flex; align-items: flex-start; justify-content: center; gap: 28px; flex-wrap: wrap;
+}
+.sunburst-canvas { width: 380px; height: 380px; cursor: pointer; }
+.sunburst-info {
+  min-width: 200px; max-width: 260px; font-size: 13px; color: var(--text-secondary);
+  line-height: 1.7;
+}
+.sunburst-legend {
+  display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+.sb-legend-item {
+  display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary);
+}
+.sb-legend-dot {
+  width: 10px; height: 10px; border-radius: 3px;
+}
+
+/* ─── Deviation Bars ─── */
+.deviation-section { margin-bottom: 28px; }
+.dev-row { margin-bottom: 16px; }
+.dev-label-row {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+}
+.dev-cat { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.dev-cat-dot { width: 8px; height: 8px; border-radius: 50%; }
+.dev-pct { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+.dev-meta { font-size: 11px; color: var(--text-muted); }
+.dev-status {
+  font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.dev-status.normal { background: rgba(52,211,153,0.1); color: var(--accent-emerald); }
+.dev-status.warning { background: rgba(245,158,11,0.1); color: var(--accent-amber); }
+.dev-status.danger { background: rgba(244,63,94,0.1); color: var(--accent-rose); }
+.dev-status.gap { background: rgba(244,63,94,0.1); color: var(--accent-rose); }
+
+.dev-bar-wrap { position: relative; height: 20px; }
+.dev-bar-track {
+  position: absolute; inset: 0; border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+}
+.dev-bar-fill {
+  position: absolute; top: 0; left: 0; height: 100%; border-radius: 10px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dev-bar-marker {
+  position: absolute; top: -2px; bottom: -2px; width: 2px; border-radius: 1px;
+  z-index: 2;
+}
+.dev-bar-marker.strategic { background: var(--accent-indigo); opacity: 0.8; }
+.dev-bar-marker.upper { background: var(--accent-amber); opacity: 0.6; border-style: dashed; }
+.dev-bar-marker-label {
+  position: absolute; top: -18px; font-size: 9px; font-family: var(--mono);
+  transform: translateX(-50%); white-space: nowrap;
+}
+
+/* ─── TAA Ideas ─── */
+.taa-list { display: flex; flex-direction: column; gap: 16px; }
+.taa-card {
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 20px; position: relative;
+  transition: all 0.3s; animation: fadeInUp 0.5s ease forwards; opacity: 0;
+}
+.taa-card:nth-child(1) { animation-delay: 0.1s; }
+.taa-card:nth-child(2) { animation-delay: 0.25s; }
+.taa-card:nth-child(3) { animation-delay: 0.4s; }
+.taa-card:hover { border-color: var(--border-active); background: rgba(255,255,255,0.035); }
+
+.taa-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+.taa-title { font-size: 15px; font-weight: 700; }
+.taa-priority {
+  font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+  text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;
+}
+.taa-priority.high { background: rgba(244,63,94,0.1); color: var(--accent-rose); border: 1px solid rgba(244,63,94,0.2); }
+.taa-priority.medium { background: rgba(245,158,11,0.1); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.2); }
+.taa-priority.low { background: rgba(52,211,153,0.1); color: var(--accent-emerald); border: 1px solid rgba(52,211,153,0.2); }
+
+.taa-signal {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; padding: 4px 12px; border-radius: 20px; margin-bottom: 12px;
+  background: rgba(99,102,241,0.08); color: var(--accent-indigo);
+  border: 1px solid rgba(99,102,241,0.15);
+}
+.taa-reason {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px;
+}
+
+.taa-actions-list { margin-bottom: 16px; }
+.taa-action-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.02); font-size: 12px; margin-bottom: 6px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+.taa-action-arrow { color: var(--accent-indigo); font-weight: 700; }
+.taa-action-amount {
+  font-family: var(--mono); font-weight: 600; color: var(--accent-amber);
+  margin-left: auto;
+}
+.taa-action-label { color: var(--text-secondary); }
+
+.taa-footer { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.taa-btn {
+  font-size: 12px; padding: 8px 18px; border-radius: 8px; border: none;
+  cursor: pointer; font-weight: 600; transition: all 0.2s; font-family: inherit;
+}
+.taa-btn.enqueue {
+  background: linear-gradient(135deg, var(--accent-indigo), #8b5cf6); color: white;
+}
+.taa-btn.enqueue:hover { opacity: 0.9; transform: translateY(-1px); }
+.taa-btn.enqueue.added {
+  background: rgba(52,211,153,0.15); color: var(--accent-emerald);
+  border: 1px solid rgba(52,211,153,0.2);
+}
+.taa-btn.enqueue.added:hover { opacity: 0.85; }
+
+/* ─── Execution Queue ─── */
+.queue-panel {
+  position: fixed; bottom: 0; right: 0; left: 260px;
+  background: linear-gradient(180deg, var(--bg-elevated), var(--bg-surface));
+  border-top: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  padding: 20px 36px; z-index: 50;
+  transform: translateY(calc(100% - 48px));
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.queue-panel.expanded { transform: translateY(0); }
+
+.queue-header {
+  display: flex; align-items: center; justify-content: space-between;
+  cursor: pointer; margin-bottom: 12px;
+}
+.queue-title {
+  font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px;
+}
+.queue-badge {
+  font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  background: rgba(99,102,241,0.12); color: var(--accent-cyan);
+  font-weight: 700; font-family: var(--mono);
+}
+.queue-actions { display: flex; gap: 8px; }
+.queue-btn {
+  font-size: 11px; padding: 6px 14px; border-radius: 6px; border: none;
+  cursor: pointer; font-weight: 600; transition: all 0.2s; font-family: inherit;
+}
+.queue-btn.execute {
+  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan)); color: white;
+}
+.queue-btn.execute:hover { opacity: 0.9; }
+.queue-btn.clear {
+  background: rgba(244,63,94,0.1); color: var(--accent-rose);
+  border: 1px solid rgba(244,63,94,0.15);
+}
+.queue-btn.clear:hover { background: rgba(244,63,94,0.2); }
+
+.queue-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
+.queue-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.02); font-size: 12px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+.queue-item-from { color: var(--text-secondary); }
+.queue-item-arrow { color: var(--accent-indigo); }
+.queue-item-to { color: var(--text-primary); font-weight: 600; }
+.queue-item-amount { margin-left: auto; font-family: var(--mono); font-weight: 600; color: var(--accent-amber); }
+.queue-item-remove {
+  width: 20px; height: 20px; border-radius: 50%; border: none;
+  background: rgba(244,63,94,0.1); color: var(--accent-rose);
+  font-size: 12px; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; transition: all 0.2s;
+}
+.queue-item-remove:hover { background: rgba(244,63,94,0.25); }
+
+.queue-empty {
+  text-align: center; padding: 16px; color: var(--text-muted); font-size: 12px;
+}
+
+/* ─── Animations ─── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-red {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* 严重偏离扇区呼吸闪烁 - 用 CSS class 控制 Canvas 外层容器 */
+.compass-pulse {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+@keyframes pulseGlow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(244,63,94,0.3)); }
+  50% { filter: drop-shadow(0 0 12px rgba(244,63,94,0.6)); }
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 20px; }
+  .queue-panel { left: 0; }
+
+  /* Mobile bottom tab */
+  .mobile-nav {
+    display: flex !important; position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg-surface); border-top: 1px solid var(--border-subtle);
+    z-index: 100; padding: 8px 0 env(safe-area-inset-bottom, 8px);
+  }
+  .mobile-nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 4px; font-size: 10px; color: var(--text-muted); text-decoration: none;
+    padding: 6px 0; transition: color 0.2s;
+  }
+  .mobile-nav-item.active { color: var(--accent-indigo); }
+  .mobile-nav-icon { font-size: 18px; }
+
+  .main { padding-bottom: 80px; }
+  .queue-panel { bottom: 60px; }
+}
+
+.mobile-nav { display: none; }
+
+/* ─── Grid Layout ─── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="app">
+
+<!-- ─── Sidebar ─── -->
+<aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">VE</div>
+      <div>
+        <div class="brand-title">VE4</div>
+        <div class="brand-sub">PRIVACY-FIRST FINANCE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">核心</div>
+      <a href="index.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">◆</span>
+        <span>财务中枢</span>
+      </a>
+      <a href="index.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">⊕</span>
+        <span>账户总览</span>
+        <span class="nav-badge">4</span>
+      </a>
+      <a href="asset-allocation.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">◈</span>
+        <span>资产配置</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">战术</div>
+      <div class="nav-item active">
+        <span class="nav-icon">◊</span>
+        <span>战术规划</span>
+      </div>
+      <a href="tactical-sandbox.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">◈</span>
+        <span>战术沙盘</span>
+      </a>
+      <a href="tactical-screen.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">◎</span>
+        <span>战术屏幕</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">数据流</div>
+      <div class="nav-item">
+        <span class="nav-icon">⇅</span>
+        <span>数据同步</span>
+        <span class="nav-badge warn">2</span>
+      </div>
+      <div class="nav-item">
+        <span class="nav-icon">▣</span>
+        <span>蓝牙接收</span>
+        <span class="nav-badge">ON</span>
+      </div>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">📧</span>
+        <span>邮件抓取</span>
+      </div>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">📋</span>
+        <span>流水导入</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">智能体</div>
+      <div class="nav-item">
+        <span class="nav-icon">✦</span>
+        <span>生活管家</span>
+      </div>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">⚙</span>
+        <span>量化策略</span>
+      </div>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">📊</span>
+        <span>研报分析</span>
+      </div>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">🔐</span>
+        <span>隐私代理</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">设置</div>
+      <a href="settings.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">⚙</span>
+        <span>设置</span>
+      </a>
+    </div>
+
+    <div class="bt-status">
+      <div class="bt-dot"></div>
+      <span class="bt-label">蓝牙监听中</span>
+      <span class="bt-meta">3 设备</span>
+    </div>
+  </aside>
+
+<!-- ─── Main Content ─── -->
+<main class="main">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-title">战术规划</div>
+    <div class="header-time" id="lastUpdate">最后更新: --</div>
+  </div>
+
+  <!-- ═══ 持仓分布热力图（旭日图） ═══ -->
+  <div class="sunburst-section">
+    <div class="section-title">持仓分布热力图</div>
+    <div class="surface">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div class="surface-title">资本市场 × 板块分布</div>
+        <div id="sunburstActions" style="display:flex; gap:8px;">
+          <button onclick="classifyByRules()" style="font-size:10px;padding:3px 10px;border-radius:12px;border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);cursor:pointer;">规则分类</button>
+          <button onclick="classifyByLLM()" style="font-size:10px;padding:3px 10px;border-radius:12px;border:1px solid var(--accent-cyan);background:transparent;color:var(--accent-cyan);cursor:pointer;">智能分类</button>
+        </div>
+      </div>
+      <div class="sunburst-wrap">
+        <canvas id="sunburstCanvas" class="sunburst-canvas" width="800" height="800"></canvas>
+        <div class="sunburst-info" id="sunburstInfo">
+          <div style="color:var(--text-muted); font-size:12px; text-align:center; padding-top:40px;">点击扇区查看详情</div>
+        </div>
+      </div>
+      <div id="sunburstLegend" class="sunburst-legend"></div>
+      </div>
+  </div>
+
+  <!-- ═══ AI 策略中心 ═══ -->
+  <div class="strategy-section">
+    <div class="section-title">AI 策略中心</div>
+
+    <!-- 应用设置 -->
+    <div class="surface" style="margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div class="surface-title">应用与数据配置</div>
+        <button onclick="saveStrategySettings()" style="font-size:11px;padding:4px 14px;border-radius:6px;border:1px solid var(--accent-cyan);background:transparent;color:var(--accent-cyan);cursor:pointer;">保存配置</button>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div>
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">AI 编程应用</label>
+          <select id="cfgAiTool" onchange="onAiToolChange()" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:12px;">
+            <option value="">-- 选择应用 --</option>
+            <option value="trae">Trae / Trae Work</option>
+            <option value="claude">Claude Code</option>
+            <option value="cursor">Cursor</option>
+            <option value="copilot">GitHub Copilot</option>
+            <option value="windsurf">Windsurf</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">应用路径（可执行文件）</label>
+          <div style="display:flex; gap:6px;">
+            <input id="cfgAiPath" type="text" placeholder="C:\Users\...\trae.exe" style="flex:1; padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:12px;">
+            <button onclick="pickFile('cfgAiPath')" style="padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:transparent; color:var(--text-muted); cursor:pointer; font-size:11px;">浏览</button>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">数据源</label>
+          <select id="cfgDataSource" style="width:100%; padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:12px;">
+            <option value="akshare">AkShare（免费开源）</option>
+            <option value="baostock">Baostock（免费开源）</option>
+            <option value="tushare">Tushare（需 Token）</option>
+            <option value="custom">自定义（手动填写）</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">数据存储目录</label>
+          <div style="display:flex; gap:6px;">
+            <input id="cfgDataDir" type="text" readonly style="flex:1; padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:12px; opacity:0.7;">
+            <button onclick="pickFolder('cfgDataDir')" style="padding:8px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:transparent; color:var(--text-muted); cursor:pointer; font-size:11px;">浏览</button>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button onclick="launchAiApp()" id="btnLaunchApp" style="font-size:11px;padding:6px 16px;border-radius:6px;border:none;background:var(--accent-indigo);color:#fff;cursor:pointer;font-weight:600;">启动 AI 应用</button>
+        <span id="launchStatus" style="font-size:11px; color:var(--text-muted); line-height:28px;"></span>
+      </div>
+    </div>
+
+    <!-- 数据管理 -->
+    <div class="surface" style="margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div class="surface-title">市场数据</div>
+        <button onclick="generateDataScript()" style="font-size:11px;padding:4px 14px;border-radius:6px;border:1px solid var(--accent-cyan);background:transparent;color:var(--accent-cyan);cursor:pointer;">生成下载脚本</button>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">数据源</label>
+          <select id="dlDataSource" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:12px;">
+            <option value="akshare">AkShare（免费开源 · Python）</option>
+            <option value="baostock">Baostock（免费开源 · Python）</option>
+            <option value="yfinance">yfinance（免费 · Yahoo Finance）</option>
+            <option value="custom">自定义（手动填写）</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">数据类型</label>
+          <select id="dlDataType" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:12px;">
+            <option value="sh000300">沪深300指数（日K）</option>
+            <option value="sz399001">深证成指（日K）</option>
+            <option value="sh000001">上证指数（日K）</option>
+            <option value="custom">自定义股票/基金代码</option>
+          </select>
+        </div>
+      </div>
+      <div id="dlCustomCodeWrap" style="display:none; margin-bottom:12px;">
+        <input id="dlCustomCode" type="text" placeholder="输入代码，如 000001 或 600519" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:12px;">
+      </div>
+      <div id="dataScriptOutput" style="display:none; margin-top:12px; border-top:1px solid var(--border-subtle); padding-top:12px;"></div>
+      <div id="dataFileList" style="font-size:12px; color:var(--text-muted); margin-top:12px; border-top:1px solid var(--border-subtle); padding-top:12px;">
+        加载中...
+      </div>
+      <div id="dataPreview" style="display:none; margin-top:16px; border-top:1px solid var(--border-subtle); padding-top:12px;"></div>
+    </div>
+
+    <!-- 策略工作台 -->
+    <div class="surface">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div class="surface-title">策略工作台</div>
+        <select id="promptTemplate" onchange="fillPrompt()" style="padding:4px 10px; border-radius:6px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:11px;">
+          <option value="">-- 选择模板 --</option>
+        </select>
+      </div>
+      <textarea id="strategyPrompt" rows="6" placeholder="在此输入策略指令，AI 编程应用将读取数据和模板来生成回测代码..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-elevated); color:var(--text-primary); font-size:12px; font-family:inherit; resize:vertical; line-height:1.6;"></textarea>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button onclick="runStrategy()" style="font-size:12px;padding:8px 20px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent-indigo),var(--accent-cyan));color:#fff;cursor:pointer;font-weight:600;">执行策略</button>
+        <button onclick="copyPromptToClipboard()" style="font-size:11px;padding:8px 14px;border-radius:6px;border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);cursor:pointer;">复制到剪贴板</button>
+      </div>
+      <div id="strategyOutput" style="display:none; margin-top:16px; border-top:1px solid var(--border-subtle); padding-top:12px;"></div>
+      <div id="strategyResults" style="margin-top:16px; border-top:1px solid var(--border-subtle); padding-top:12px;">
+        <div style="font-size:12px; font-weight:600; color:var(--text-secondary); margin-bottom:8px;">历史策略结果</div>
+        <div id="resultsList" style="font-size:12px; color:var(--text-muted);">加载中...</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── Mobile Bottom Nav ─── -->
+<nav class="mobile-nav">
+  <a href="index.html" class="mobile-nav-item">
+    <span class="mobile-nav-icon">📊</span>
+    <span>账户总览</span>
+  </a>
+  <a href="asset-allocation.html" class="mobile-nav-item">
+    <span class="mobile-nav-icon">◈</span>
+    <span>资产配置</span>
+  </a>
+  <a href="tactical-planning.html" class="mobile-nav-item active">
+    <span class="mobile-nav-icon">⚔️</span>
+    <span>战术规划</span>
+  </a>
+  <a href="tactical-sandbox.html" class="mobile-nav-item">
+    <span class="mobile-nav-icon">📋</span>
+    <span>战术沙盘</span>
+  </a>
+  <a href="tactical-screen.html" class="mobile-nav-item">
+    <span class="mobile-nav-icon">◎</span>
+    <span>战术屏幕</span>
+  </a>
+</nav>
+
+</div><!-- /.app -->
+
+<script>
+/* ═══════════════════════════════════════════
+   Mock 数据 — 旭日图（市场 × 板块）
+   ═══════════════════════════════════════════ */
+
+const MARKET_COLORS = {
+  'A股':   { base: '#6366f1', light: '#818cf8' },
+  '美股':   { base: '#f59e0b', light: '#fbbf24' },
+  '港股':   { base: '#10b981', light: '#34d399' },
+  '债券':   { base: '#06b6d4', light: '#22d3ee' },
+  '黄金':   { base: '#f43f5e', light: '#fb7185' },
+  'QDII混合': { base: '#a78bfa', light: '#c4b5fd' },
+  '未分类':  { base: '#475569', light: '#64748b' },
+};
+
+const SECTOR_COLORS = {
+  '科技/半导体': '#818cf8', '消费': '#fbbf24', '医药': '#34d399',
+  '金融': '#22d3ee', '新能源': '#fb923c', '红利/价值': '#a78bfa',
+  '基建/地产': '#f472b6', '其他': '#94a3b8',
+};
+
+const MOCK_SUNBURST = {
+  markets: [
+    { market: 'A股', amount: 180000, sectors: [
+      { sector: '科技/半导体', amount: 90000, holdings: ['半导体ETF', '中芯国际'] },
+      { sector: '红利/价值', amount: 60000, holdings: ['红利低波ETF'] },
+      { sector: '消费', amount: 30000, holdings: ['消费ETF'] },
+    ]},
+    { market: '美股', amount: 68563, sectors: [
+      { sector: '科技/半导体', amount: 68563, holdings: ['纳指100ETF'] },
+    ]},
+    { market: '债券', amount: 18769, sectors: [
+      { sector: null, amount: 18769, holdings: ['十年国债ETF'] },
+    ]},
+    { market: '黄金', amount: 25731, sectors: [
+      { sector: null, amount: 25731, holdings: ['黄金ETF'] },
+    ]},
+  ],
+  concentration: { hhi: 0.182, hhi_label: '适度集中', max_sector: '科技/半导体', max_sector_pct: 59.0, market_count: 3, sector_count: 4 },
+};
+
+const MOCK_TAA_IDEAS = [
+  {
+    id: 'taa1',
+    title: '战术性降低进取类敞口',
+    signal: '风险偏好过高',
+    reason: '当前进取类占比52.5%，远超战略基准。在市场波动率上升的环境下，建议将部分进取类资产转入稳健类，降低组合整体波动。',
+    actions: [
+      { from: '部分股票基金', to: '中短债基金', amount: 20000 },
+      { from: '部分股票基金', to: '货币基金', amount: 10000 },
+    ],
+    priority: 'high',
+    status: 'pending'
+  },
+  {
+    id: 'taa2',
+    title: '补充稳健类底仓',
+    signal: '资产结构失衡',
+    reason: '稳健类当前占比0%，完全缺失固定收益配置。建议逐步建仓中短债基金，建立抗波动安全垫。',
+    actions: [
+      { from: '证券可用资金', to: '中短债基金', amount: 15000 },
+    ],
+    priority: 'medium',
+    status: 'pending'
+  },
+  {
+    id: 'taa3',
+    title: '保障类维持观察',
+    signal: '配置合理',
+    reason: '保障类（黄金）占比9.1%，接近战略基准12.1%，暂不需要调整。黄金在当前地缘风险环境下具有避险价值，建议维持现有配置。',
+    actions: [],
+    priority: 'low',
+    status: 'pending'
+  }
+];
+
+/* ═══════════════════════════════════════════
+   API 预留
+   ═══════════════════════════════════════════ */
+
+const API_BASE = window.location.port === '5173' ? 'http://localhost:8420' : '';
+
+async function fetchJson(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+async function loadTacticalData() {
+  const data = await fetchJson(`${API_BASE}/api/v1/tactical/overview`);
+  if (data && !data.error && data.markets) {
+    renderSunburst(data);
+    renderTAAIdeas(data.taa_ideas || []);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   工具函数
+   ═══════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════
+   旭日图渲染（资本市场 × 板块分布）
+   ═══════════════════════════════════════════ */
+
+let _sbHitAreas = [];  // 用于点击检测
+let _sbHovered = null;
+let _sbAllHoldings = []; // 全局持仓列表（含金额）
+let _sbAllMarkets = [];  // 全局市场数据
+
+function renderSunburst(data) {
+  const canvas = document.getElementById('sunburstCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 2;
+  const cssSize = 380;
+  canvas.style.width = cssSize + 'px';
+  canvas.style.height = cssSize + 'px';
+  canvas.width = cssSize * dpr;
+  canvas.height = cssSize * dpr;
+  ctx.scale(dpr, dpr);
+
+  const cx = cssSize / 2, cy = cssSize / 2;
+  const outerR = 170, innerR = 100, centerR = 62;
+  const gapDeg = 1.2;
+  const markets = data.markets || [];
+  const totalAmt = markets.reduce((s, m) => s + m.amount, 0) || 1;
+  _sbAllMarkets = markets;
+  _sbAllHoldings = data.holdings || [];
+
+  // 构建扇区数据
+  const outerSectors = []; // {startAngle, endAngle, market, color, amount, pct}
+  const innerSectors = []; // {startAngle, endAngle, market, sector, color, amount, pct}
+  let angle = -Math.PI / 2;
+
+  markets.forEach(m => {
+    const mPct = m.amount / totalAmt;
+    const mAngle = mPct * Math.PI * 2;
+    const mc = MARKET_COLORS[m.market] || MARKET_COLORS['未分类'];
+    outerSectors.push({ startAngle: angle, endAngle: angle + mAngle, market: m.market, color: mc.base, amount: m.amount, pct: mPct });
+
+    // 内环：该市场的各板块
+    if (m.sectors && m.sectors.length > 0) {
+      let sAngle = angle + gapDeg * Math.PI / 180;
+      m.sectors.forEach(s => {
+        const sPct = s.amount / totalAmt;
+        const sAngleSpan = sPct * Math.PI * 2;
+        const sColor = (s.sector && SECTOR_COLORS[s.sector]) || mc.light || mc.base;
+        innerSectors.push({ startAngle: sAngle, endAngle: sAngle + sAngleSpan, market: m.market, sector: s.sector || m.market, color: sColor, amount: s.amount, pct: sPct, holdings: s.holdings });
+        sAngle += sAngleSpan + gapDeg * Math.PI / 180;
+      });
+    }
+    angle += mAngle + gapDeg * Math.PI / 180;
+  });
+
+  _sbHitAreas = [];
+  let _pulsePhase = 0;
+  function draw() {
+    _pulsePhase += 0.015;
+    ctx.clearRect(0, 0, cssSize, cssSize);
+
+    // 背景辉光
+    const bgGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, outerR + 30);
+    bgGlow.addColorStop(0, 'rgba(99,102,241,0.04)');
+    bgGlow.addColorStop(0.5, 'rgba(6,182,212,0.02)');
+    bgGlow.addColorStop(1, 'transparent');
+    ctx.beginPath(); ctx.arc(cx, cy, outerR + 30, 0, Math.PI * 2);
+    ctx.fillStyle = bgGlow; ctx.fill();
+
+    // 外圈装饰环
+    ctx.beginPath(); ctx.arc(cx, cy, outerR + 6, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(99,102,241,0.08)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, outerR + 12, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(6,182,212,0.05)'; ctx.lineWidth = 0.5; ctx.setLineDash([3, 6]); ctx.stroke(); ctx.setLineDash([]);
+
+    // 外环（市场）— 带辉光
+    outerSectors.forEach(s => {
+      const isHover = _sbHovered && _sbHovered.level === 'market' && _sbHovered.market === s.market;
+      const r = isHover ? outerR + 4 : outerR;
+      const glowAlpha = 0.12 + 0.04 * Math.sin(_pulsePhase);
+
+      // 辉光层
+      if (isHover) {
+        ctx.save(); ctx.shadowColor = s.color; ctx.shadowBlur = 20;
+        ctx.beginPath(); ctx.arc(cx, cy, r + 2, s.startAngle, s.endAngle);
+        ctx.arc(cx, cy, innerR, s.endAngle, s.startAngle, true); ctx.closePath();
+        ctx.fillStyle = hexToRgba(s.color, 0.15); ctx.fill(); ctx.restore();
+      }
+
+      // 主体渐变
+      const grad = ctx.createRadialGradient(cx, cy, innerR, cx, cy, r);
+      grad.addColorStop(0, hexToRgba(s.color, 0.4));
+      grad.addColorStop(1, hexToRgba(s.color, glowAlpha + 0.5));
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, s.startAngle, s.endAngle);
+      ctx.arc(cx, cy, innerR + 2, s.endAngle, s.startAngle, true);
+      ctx.closePath();
+      ctx.fillStyle = grad; ctx.fill();
+
+      // 扇区边框（渐变描边）
+      ctx.strokeStyle = hexToRgba(s.color, isHover ? 0.9 : 0.35);
+      ctx.lineWidth = isHover ? 2 : 1;
+      ctx.stroke();
+      // 标签
+      const mid = (s.startAngle + s.endAngle) / 2;
+      const labelR = (outerR + innerR) / 2 + 2;
+      const lx = cx + Math.cos(mid) * labelR;
+      const ly = cy + Math.sin(mid) * labelR;
+      if (s.pct > 0.08) {
+        ctx.fillStyle = '#fff';
+        ctx.font = '600 12px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(s.market, lx, ly - 7);
+        ctx.font = '11px var(--mono)';
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillText((s.pct * 100).toFixed(1) + '%', lx, ly + 8);
+      }
+      // hit area
+      _sbHitAreas.push({ level: 'market', market: s.market, startAngle: s.startAngle, endAngle: s.endAngle, r1: innerR, r2: r, data: s });
+    });
+
+    // 内环（板块）
+    innerSectors.forEach(s => {
+      const isHover = _sbHovered && _sbHovered.level === 'sector' && _sbHovered.sector === s.sector && _sbHovered.market === s.market;
+      const r1 = isHover ? centerR + 2 : centerR + 4;
+      ctx.beginPath();
+      ctx.arc(cx, cy, innerR - 2, s.startAngle, s.endAngle);
+      ctx.arc(cx, cy, r1, s.endAngle, s.startAngle, true);
+      ctx.closePath();
+      ctx.fillStyle = isHover ? s.color : hexToRgba(s.color, 0.5);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(13,20,33,0.6)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // 标签（仅大扇区）
+      if (s.pct > 0.12) {
+        const mid = (s.startAngle + s.endAngle) / 2;
+        const lr = (innerR + centerR) / 2;
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.save();
+        ctx.translate(cx + Math.cos(mid) * lr, cy + Math.sin(mid) * lr);
+        let rot = mid + Math.PI / 2;
+        if (rot > Math.PI / 2 && rot < Math.PI * 1.5) rot += Math.PI;
+        ctx.rotate(rot);
+        ctx.fillText(s.sector, 0, 0);
+        ctx.restore();
+      }
+      _sbHitAreas.push({ level: 'sector', market: s.market, sector: s.sector, startAngle: s.startAngle, endAngle: s.endAngle, r1: r1, r2: innerR - 2, data: s });
+    });
+
+    // 中心圆
+    ctx.beginPath();
+    ctx.arc(cx, cy, centerR, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(13,20,33,0.9)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(99,102,241,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    // 中心文字
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '700 14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('¥' + (totalAmt / 10000).toFixed(1) + '万', cx, cy - 8);
+    ctx.font = '11px system-ui';
+    ctx.fillStyle = '#64748b';
+    const conc = data.concentration || {};
+    ctx.fillText(conc.hhi_label || '', cx, cy + 10);
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+  renderSunburstLegend(outerSectors);
+
+  // 点击交互
+  canvas.onclick = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const dx = mx - cx, dy = my - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    let clickAngle = Math.atan2(dy, dx);
+
+    let hit = null;
+    for (const area of _sbHitAreas) {
+      if (dist >= area.r1 && dist <= area.r2) {
+        let a = clickAngle;
+        let s = area.startAngle, en = area.endAngle;
+        while (a < s) a += Math.PI * 2;
+        while (a > s + Math.PI * 2) a -= Math.PI * 2;
+        if (a >= s && a <= en) { hit = area; break; }
+      }
+    }
+    if (hit) {
+      _sbHovered = { level: hit.level, market: hit.market, sector: hit.sector };
+      showSunburstDetail(hit.data);
+    }
+  };
+}
+
+function showSunburstDetail(d) {
+  const panel = document.getElementById('sunburstInfo');
+  if (!d) { if (panel) panel.innerHTML = '<div style="color:var(--text-muted); font-size:12px; text-align:center; padding-top:40px;">点击扇区查看详情</div>'; return; }
+
+  const isMarket = !d.sector || d.level === 'market';
+  const label = isMarket ? d.market : d.sector;
+
+  // 找到该区域下的所有持仓（含金额）
+  let holdings = [];
+  if (isMarket) {
+    holdings = _sbAllHoldings.filter(h => h.market === d.market && h.market !== null);
+  } else {
+    holdings = _sbAllHoldings.filter(h => h.sector === d.sector && h.market === d.market);
+  }
+  holdings.sort((a, b) => (b.current_value || 0) - (a.current_value || 0));
+
+  let html = `<div style="font-weight:700; font-size:15px; margin-bottom:8px; color:var(--text-primary)">${label}</div>`;
+  html += `<div style="font-family:var(--mono); font-size:20px; font-weight:700; margin-bottom:12px;">¥${Math.round(d.amount).toLocaleString()}</div>`;
+  html += `<div style="font-size:11px; color:var(--text-muted); margin-bottom:12px;">占比 ${(d.pct * 100).toFixed(1)}%</div>`;
+
+  // 板块明细（仅点击市场时显示）
+  if (isMarket && d.data && d.data.sectors) {
+    html += `<div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">板块明细</div>`;
+    d.data.sectors.forEach(s => {
+      html += `<div style="display:flex; justify-content:space-between; font-size:12px; padding:2px 0;"><span>${s.sector || d.market}</span><span style="font-family:var(--mono)">¥${Math.round(s.amount).toLocaleString()}</span></div>`;
+    });
+  }
+
+  // 持仓明细（紧跟占比下方）
+  if (holdings.length > 0) {
+    html += `<div style="font-size:11px; color:var(--text-muted); margin-top:14px; margin-bottom:6px; padding-top:10px; border-top:1px solid var(--border-subtle);">持仓明细（${holdings.length}只）</div>`;
+    holdings.forEach((h, i) => {
+      const srcTag = h.source === 'manual' ? '<span style="color:var(--accent-cyan)">手动</span>'
+        : h.source === 'llm' ? '<span style="color:var(--accent-amber)">AI</span>' : '规则';
+      html += `<div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; padding:5px 0; ${i < holdings.length - 1 ? 'border-bottom:1px solid var(--border-subtle);' : ''}">`;
+      html += `<span style="color:var(--text-primary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${h.name}">${h.name}</span>`;
+      html += `<span style="font-family:var(--mono); font-weight:600; margin-left:8px; white-space:nowrap;">¥${Math.round(h.current_value || 0).toLocaleString()}</span>`;
+      html += `<span style="font-size:10px; color:var(--text-muted); margin-left:8px; white-space:nowrap;">${srcTag}</span>`;
+      html += `</div>`;
+    });
+  }
+
+  panel.innerHTML = html;
+}
+
+function renderSunburstLegend(sectors) {
+  const el = document.getElementById('sunburstLegend');
+  if (!el) return;
+  el.innerHTML = sectors.map(s =>
+    `<div class="sb-legend-item"><div class="sb-legend-dot" style="background:${s.color}"></div>${s.market} ${s.market === 'A股' || s.market === '美股' ? '(股票)' : ''} ${s.pct > 0.05 ? (s.pct * 100).toFixed(1) + '%' : ''}</div>`
+  ).join('');
+}
+
+async function classifyByRules() {
+  try {
+    const r = await fetch(API_BASE + '/api/v1/tactical/classify-rules', {method:'POST'});
+    const d = await r.json();
+    if (d.data && d.data.markets) {
+      renderSunburst(d.data);
+    } else {
+      alert('分类失败: ' + (d.error || ''));
+    }
+  } catch(e) { alert('网络错误: ' + e.message); }
+}
+
+async function classifyByLLM() {
+  if (!confirm('智能分类将调用AI分析您的持仓，确认继续？')) return;
+  try {
+    const r = await fetch(API_BASE + '/api/v1/tactical/classify-llm', {method:'POST'});
+    const d = await r.json();
+    if (d.status === 'llm_classified' && d.data) {
+      // LLM分类结果自动保存
+      await fetch(API_BASE + '/api/v1/tactical/classifications', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({version:1, classifications:d.data})
+      });
+      // 重新加载
+      loadTacticalData();
+    } else if (d.status === 'parse_failed') {
+      alert('AI返回格式解析失败，原始内容:\n' + (d.raw || ''));
+    } else {
+      alert('智能分类失败: ' + (d.error || ''));
+    }
+  } catch(e) { alert('网络错误: ' + e.message); }
+}
+
+/* ─── 偏离度仪表板（暂用占位） ─── */
+function renderDeviationBars(compassData) {
+  const el = document.getElementById('deviationBars');
+  if (!el) return;
+  el.innerHTML = '<div style="padding:12px; color:var(--text-muted); font-size:12px;">板块偏离度将在持仓分类完成后展示</div>';
+}
+
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/* ═══════════════════════════════════════════
+   TAA 战术建议面板
+   ═══════════════════════════════════════════ */
+
+function renderTAAIdeas(ideas) {
+  const container = document.getElementById('taaList');
+
+  if (!ideas || ideas.length === 0) {
+    container.innerHTML = `
+      <div class="surface" style="text-align:center;padding:48px 24px;color:var(--text-muted);">
+        <div style="font-size:32px;opacity:0.3;margin-bottom:12px;">◈</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text-secondary);">暂无战术建议</div>
+      </div>`;
+    return;
+  }
+
+  const priorityLabels = { high: '高优先', medium: '中优先', low: '低优先' };
+
+  container.innerHTML = ideas.map(idea => {
+    const actionsHtml = idea.actions.length > 0
+      ? `<div class="taa-actions-list">
+           ${idea.actions.map(a => `
+             <div class="taa-action-item">
+               <span class="taa-action-label">${a.from}</span>
+               <span class="taa-action-arrow">→</span>
+               <span class="taa-action-label">${a.to}</span>
+               <span class="taa-action-amount">¥${a.amount.toLocaleString()}</span>
+             </div>
+           `).join('')}
+         </div>`
+      : '';
+
+    const hasActions = idea.actions.length > 0;
+
+    return `
+      <div class="taa-card" id="taa-${idea.id}">
+        <div class="taa-header">
+          <div class="taa-title">${idea.title}</div>
+          <span class="taa-priority ${idea.priority}">${priorityLabels[idea.priority] || idea.priority}</span>
+        </div>
+        <div class="taa-signal">信号: ${idea.signal}</div>
+        <div class="taa-reason">${idea.reason}</div>
+        ${actionsHtml}
+        <div class="taa-footer">
+          ${hasActions ? `<button class="taa-btn enqueue" onclick="enqueueIdea('${idea.id}')">加入执行队列</button>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════
+   AI 策略中心
+   ═══════════════════════════════════════════ */
+
+let _promptTemplates = [];
+
+async function loadStrategySettings() {
+  try {
+    const r = await fetch(API_BASE + '/api/v1/strategy/settings');
+    const d = await r.json();
+    if (d.error) return;
+    document.getElementById('cfgAiTool').value = d.ai_tool?.name || '';
+    document.getElementById('cfgAiPath').value = d.ai_tool?.path || '';
+    document.getElementById('cfgDataSource').value = d.data_source?.provider || 'akshare';
+    document.getElementById('cfgDataDir').value = d.data_source?.data_dir || '';
+  } catch(e) {}
+}
+
+async function saveStrategySettings() {
+  var payload = {
+    ai_tool: { name: document.getElementById('cfgAiTool').value, path: document.getElementById('cfgAiPath').value },
+    data_source: { provider: document.getElementById('cfgDataSource').value, data_dir: document.getElementById('cfgDataDir').value },
+  };
+  try {
+    var r = await fetch(API_BASE + '/api/v1/strategy/settings', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+    });
+    var d = await r.json();
+    if (d.status === 'saved') {
+      alert('配置已保存');
+    } else {
+      alert('保存失败: ' + (d.error || '未知错误'));
+    }
+  } catch(e) { alert('保存失败: ' + e.message); }
+}
+
+async function launchAiApp() {
+  const path = document.getElementById('cfgAiPath').value;
+  if (!path) { alert('请先填写应用路径'); return; }
+  const st = document.getElementById('launchStatus');
+  st.textContent = '启动中...';
+  try {
+    const r = await fetch(API_BASE + '/api/v1/strategy/launch-app', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ path, workspace: document.getElementById('cfgDataDir').value })
+    });
+    const d = await r.json();
+    if (d.status === 'launched') { st.textContent = '已启动'; st.style.color = 'var(--accent-emerald)'; }
+    else { st.textContent = '失败: ' + (d.error || ''); st.style.color = 'var(--accent-rose)'; }
+  } catch(e) { st.textContent = '网络错误'; st.style.color = 'var(--accent-rose)'; }
+}
+
+let _currentPreviewFile = null;
+
+async function loadDataFiles() {
+  const el = document.getElementById('dataFileList');
+  try {
+    const r = await fetch(API_BASE + '/api/v1/strategy/data-files');
+    const d = await r.json();
+    if (d.files && d.files.length > 0) {
+      el.innerHTML = d.files.map(f => {
+        const isOpen = _currentPreviewFile === f.name;
+        const arrow = isOpen ? '▼' : '▶';
+        const rowBg = isOpen ? 'background:rgba(99,102,241,0.04);' : '';
+        return `<div id="fileRow-${f.name.replace(/[^a-zA-Z0-9]/g, '_')}" style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border-bottom:1px solid var(--border-subtle); cursor:pointer; border-radius:6px; ${rowBg}" onclick="previewData('${f.name}')">
+          <div><span style="color:var(--text-muted); margin-right:6px; font-size:10px;">${arrow}</span><span style="color:var(--text-primary)">${f.name}</span> <span style="color:var(--text-muted); font-size:10px;">${f.modified}</span></div>
+          <div style="display:flex; gap:12px; font-family:var(--mono); font-size:11px;">
+            <span>${f.rows ? f.rows.toLocaleString() + ' 行' : ''}</span>
+            <span style="color:var(--text-muted)">${f.size_mb} MB</span>
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      el.innerHTML = '<div style="padding:12px; text-align:center;">暂无数据文件，点击上方按钮下载</div>';
+    }
+  } catch(e) { el.innerHTML = '加载失败'; }
+}
+
+async function previewData(filename) {
+  const el = document.getElementById('dataPreview');
+  // 再次点击同一文件 → 收起
+  if (_currentPreviewFile === filename) {
+    _currentPreviewFile = null;
+    el.style.display = 'none';
+    el.innerHTML = '';
+    loadDataFiles(); // 刷新箭头状态
+    return;
+  }
+  _currentPreviewFile = filename;
+  loadDataFiles(); // 刷新箭头状态
+  el.style.display = 'block';
+  el.innerHTML = '加载中...';
+  try {
+    const r = await fetch(API_BASE + '/api/v1/strategy/preview-data/' + encodeURIComponent(filename));
+    const d = await r.json();
+    if (d.error) { el.innerHTML = d.error; return; }
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono);"><tr>';
+    d.headers.forEach(h => html += `<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border-subtle);color:var(--accent-cyan);font-weight:600;">${h}</th>`);
+    html += '</tr>';
+    d.rows.forEach(row => {
+      html += '<tr>';
+      row.forEach((c, i) => html += `<td style="padding:3px 8px;border-bottom:1px solid rgba(255,255,255,0.03);color:${i===0?'var(--text-primary)':'var(--text-secondary)'};">${c}</td>`);
+      html += '</tr>';
+    });
+    html += '</table>';
+    el.innerHTML = html;
+  } catch(e) { el.innerHTML = '加载失败'; }
+}
+
+/* ─── AI 引导式数据下载脚本生成 ─── */
+function generateDataScript() {
+  const source = document.getElementById('dlDataSource').value;
+  const type   = document.getElementById('dlDataType').value;
+  const custom = document.getElementById('dlCustomCode').value.trim();
+  const dataDir = document.getElementById('cfgDataDir').value || './market_data';
+  const out = document.getElementById('dataScriptOutput');
+
+  // 数据类型映射
+  const typeMap = {
+    sh000300: { name: '沪深300指数', akshare: '000300', baostock: 'sh.000300', yfinance: '000300.SS' },
+    sz399001: { name: '深证成指',    akshare: '399001', baostock: 'sz.399001', yfinance: '399001.SZ' },
+    sh000001: { name: '上证指数',    akshare: '000001', baostock: 'sh.000001', yfinance: '000001.SS' },
+  };
+
+  let info = typeMap[type];
+  let isCustom = type === 'custom';
+  if (isCustom && !custom) { alert('请输入自定义股票/基金代码'); return; }
+  if (isCustom) {
+    info = { name: custom, akshare: custom, baostock: custom, yfinance: custom };
+  }
+
+  let script = '';
+  const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+
+  if (source === 'akshare') {
+    script = `# 使用 AkShare 下载「${info.name}」数据
+# 安装依赖: pip install akshare pandas
+
+import akshare as ak
+import pandas as pd
+from datetime import datetime
+import os
+
+# 配置
+symbol = "${info.akshare}"  # ${info.name}
+save_dir = r"${dataDir}"
+os.makedirs(save_dir, exist_ok=True)
+
+# 下载日线数据（自动处理复权）
+# 指数行情
+df = ak.index_zh_a_hist(symbol=symbol, period="daily", start_date="20200101", end_date="${today}")
+
+# 保存为 CSV
+filename = f"${info.name}_${dateStr}.csv"
+filepath = os.path.join(save_dir, filename)
+df.to_csv(filepath, index=False, encoding='utf-8-sig')
+print(f"✅ 数据已保存: {filepath} ({len(df)} 行)")
+`;
+  } else if (source === 'baostock') {
+    script = `# 使用 Baostock 下载「${info.name}」数据
+# 安装依赖: pip install baostock pandas
+
+import baostock as bs
+import pandas as pd
+from datetime import datetime
+import os
+
+# 登录
+lg = bs.login()
+print(f"登录结果: {lg.error_code} - {lg.error_msg}")
+
+# 配置
+symbol = "${info.baostock}"  # ${info.name}
+save_dir = r"${dataDir}"
+os.makedirs(save_dir, exist_ok=True)
+
+# 下载日线数据
+fields = "date,code,open,high,low,close,volume,amount,turn,pctChg"
+rs = bs.query_history_k_data_plus(symbol, fields, start_date="2020-01-01", end_date="${today}", frequency="d", adjustflag="3")
+
+data_list = []
+while (rs.error_code == '0') & rs.next():
+    data_list.append(rs.get_row_data())
+df = pd.DataFrame(data_list, columns=rs.fields)
+
+bs.logout()
+
+# 保存
+filename = f"${info.name}_${dateStr}.csv"
+filepath = os.path.join(save_dir, filename)
+df.to_csv(filepath, index=False, encoding='utf-8-sig')
+print(f"✅ 数据已保存: {filepath} ({len(df)} 行)")
+`;
+  } else if (source === 'yfinance') {
+    script = `# 使用 yfinance 下载「${info.name}」数据
+# 安装依赖: pip install yfinance pandas
+
+import yfinance as yf
+import pandas as pd
+from datetime import datetime
+import os
+
+# 配置
+symbol = "${info.yfinance}"  # ${info.name}
+save_dir = r"${dataDir}"
+os.makedirs(save_dir, exist_ok=True)
+
+# 下载数据
+ticker = yf.Ticker(symbol)
+df = ticker.history(period="max", interval="1d")
+df = df.reset_index()
+
+# 保存
+filename = f"${info.name}_${dateStr}.csv"
+filepath = os.path.join(save_dir, filename)
+df.to_csv(filepath, index=False, encoding='utf-8-sig')
+print(f"✅ 数据已保存: {filepath} ({len(df)} 行)")
+`;
+  }
+
+  // 构造配套信息
+  const sourceLabel = {akshare:'AkShare', baostock:'Baostock', yfinance:'yfinance'}[source] || source;
+  const depMap = {akshare:'pip install akshare pandas', baostock:'pip install baostock pandas', yfinance:'pip install yfinance pandas'};
+  const depInstall = depMap[source] || 'pip install pandas';
+
+  const purpose = '下载「' + info.name + '」的日K线历史数据（含开盘、最高、最低、收盘、成交量），保存为 CSV 文件供策略回测使用。';
+  const notes = [
+    '数据源: ' + sourceLabel + '（' + (source === 'yfinance' ? '需科学上网' : '国内可直连') + '）',
+    '时间范围: 2020-01-01 至今',
+    '保存格式: CSV（UTF-8 with BOM）',
+    '保存目录: ' + (dataDir || '未配置，脚本将使用默认路径'),
+    '如需其他数据（个股、分钟线、财务数据等），可在上方选择"自定义"输入代码',
+  ];
+
+  // 构造给 AI 编程应用的完整 prompt
+  const aiPrompt = '## 任务\n' + purpose + '\n\n'
+    + '## 依赖安装\n```\n' + depInstall + '\n```\n\n'
+    + '## 脚本\n```python\n' + script + '\n```\n\n'
+    + '## 备注\n' + notes.map(function(n) { return '- ' + n; }).join('\n') + '\n\n'
+    + '请直接运行此脚本。如遇到依赖缺失请先安装，如遇到 API 变更请修正后执行。';
+
+  // 显示输出面板
+  out.style.display = 'block';
+  out.innerHTML = ''
+    + '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">'
+    + '  <span style="font-size:12px; font-weight:600; color:var(--accent-cyan);">' + sourceLabel + ' 下载脚本</span>'
+    + '  <div style="display:flex; gap:6px;">'
+    + '    <button onclick="copyScriptOnly()" id="btnCopyScript" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);cursor:pointer;">复制脚本</button>'
+    + '    <button onclick="copyFullPrompt()" id="btnCopyPrompt" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);cursor:pointer;">复制完整提示词</button>'
+    + '    <button onclick="sendToAiApp()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:none;background:linear-gradient(135deg,var(--accent-indigo),var(--accent-cyan));color:#fff;cursor:pointer;font-weight:600;">发送到AI应用</button>'
+    + '  </div>'
+    + '</div>'
+
+    // 目的
+    + '<div style="margin-bottom:8px;padding:8px 10px;border-radius:6px;background:rgba(99,102,241,0.06);border-left:3px solid var(--accent-indigo);">'
+    + '  <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">目的</div>'
+    + '  <div style="font-size:12px;color:var(--text-primary);line-height:1.5;">' + purpose + '</div>'
+    + '</div>'
+
+    // 依赖安装
+    + '<div style="margin-bottom:8px;padding:8px 10px;border-radius:6px;background:rgba(245,158,11,0.06);border-left:3px solid var(--accent-amber);">'
+    + '  <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">依赖安装</div>'
+    + '  <code style="font-size:11px;font-family:var(--mono);color:var(--accent-amber);">' + depInstall + '</code>'
+    + '</div>'
+
+    // 脚本（可编辑）
+    + '<div style="margin-bottom:8px;">'
+    + '  <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">脚本代码 <span style="color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">（可编辑）</span></div>'
+    + '  <textarea id="generatedScriptContent" oninput="window._generatedDataScript=this.value;rebuildPrompt()" style="background:rgba(0,0,0,0.3);border:1px solid var(--border-subtle);border-radius:8px;padding:12px;font-size:11px;font-family:var(--mono);color:var(--text-secondary);overflow-x:auto;line-height:1.6;white-space:pre-wrap;word-break:break-all;width:100%;min-height:180px;resize:vertical;outline:none;" spellcheck="false">' + escapeHtml(script) + '</textarea>'
+    + '</div>'
+
+    // 备注（可编辑）
+    + '<div style="margin-bottom:8px;padding:8px 10px;border-radius:6px;background:rgba(255,255,255,0.02);border-left:3px solid var(--border-subtle);">'
+    + '  <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;">备注 <span style="color:var(--text-muted);font-weight:400;text-transform:none;letter-spacing:0;">（可编辑）</span></div>'
+    + '  <textarea id="generatedNotesContent" oninput="rebuildPrompt()" style="width:100%;min-height:60px;background:transparent;border:none;color:var(--text-secondary);font-size:11px;line-height:1.6;outline:none;resize:vertical;font-family:inherit;" spellcheck="false">' + notes.map(function(n) { return n; }).join('\n') + '</textarea>'
+    + '</div>';
+
+  // 保存全局
+  window._generatedDataScript = script;
+  window._generatedAiPrompt = aiPrompt;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function rebuildPrompt() {
+  var el = document.getElementById('generatedScriptContent');
+  var notesEl = document.getElementById('generatedNotesContent');
+  if (el) window._generatedDataScript = el.value;
+  // 重建完整 prompt
+  if (el && notesEl) {
+    var purposeEl = document.querySelector('#dataScriptOutput [style*="border-left:3px solid var(--accent-indigo)"] div:last-child');
+    var purpose = purposeEl ? purposeEl.textContent : '';
+    var notes = notesEl.value.split('\n').filter(function(l) { return l.trim(); });
+    var sourceEl = document.getElementById('dlDataSource');
+    var source = sourceEl ? sourceEl.value : 'akshare';
+    var depMap = {akshare:'pip install akshare pandas', baostock:'pip install baostock pandas', yfinance:'pip install yfinance pandas'};
+    var depInstall = depMap[source] || 'pip install pandas';
+    window._generatedAiPrompt = '## 任务\n' + purpose + '\n\n'
+      + '## 依赖安装\n```\n' + depInstall + '\n```\n\n'
+      + '## 脚本\n```python\n' + el.value + '\n```\n\n'
+      + '## 备注\n' + notes.map(function(n) { return '- ' + n; }).join('\n') + '\n\n'
+      + '请直接运行此脚本。如遇到依赖缺失请先安装，如遇到 API 变更请修正后执行。';
+  }
+}
+
+async function copyScriptOnly() {
+  var el = document.getElementById('generatedScriptContent');
+  var text = el ? el.value : (window._generatedDataScript || '');
+  if (!text) return;
+  await navigator.clipboard.writeText(text);
+  var btn = document.getElementById('btnCopyScript');
+  if (btn) { btn.textContent = '已复制'; setTimeout(function() { btn.textContent = '复制脚本'; }, 1500); }
+}
+
+async function copyFullPrompt() {
+  if (!window._generatedAiPrompt) return;
+  await navigator.clipboard.writeText(window._generatedAiPrompt);
+  const btn = document.getElementById('btnCopyPrompt');
+  if (btn) { btn.textContent = '已复制'; setTimeout(function() { btn.textContent = '复制完整提示词'; }, 1500); }
+}
+
+async function sendToAiApp() {
+  if (!window._generatedAiPrompt) return;
+  const app = document.getElementById('cfgAiTool').value || 'AI 编程应用';
+  const appPath = document.getElementById('cfgAiPath').value;
+  const dataDir = document.getElementById('cfgDataDir').value;
+
+  await navigator.clipboard.writeText(window._generatedAiPrompt);
+
+  if (appPath) {
+    try {
+      const r = await fetch(API_BASE + '/api/v1/strategy/launch-app', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ path: appPath, workspace: dataDir })
+      });
+      const d = await r.json();
+      if (d.status === 'launched') {
+        alert(app + ' 已启动。完整提示词已复制到剪贴板，请在应用中粘贴执行。');
+      } else {
+        alert('启动失败: ' + (d.error || '') + '\n请手动打开 ' + app + '，提示词已在剪贴板中。');
+      }
+    } catch(e) {
+      alert('提示词已复制到剪贴板。\n请手动打开 ' + app + ' 并粘贴。');
+    }
+  } else {
+    alert('完整提示词已复制到剪贴板。\n请打开 ' + app + '（或任意 AI 编程工具/终端）粘贴执行。');
+  }
+}
+
+async function loadPromptTemplates() {
+  try {
+    const r = await fetch(API_BASE + '/api/v1/strategy/prompt-templates');
+    const d = await r.json();
+    _promptTemplates = d.templates || [];
+    const sel = document.getElementById('promptTemplate');
+    _promptTemplates.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.id; opt.textContent = t.name;
+      sel.appendChild(opt);
+    });
+  } catch(e) {}
+}
+
+function fillPrompt() {
+  const id = document.getElementById('promptTemplate').value;
+  const tpl = _promptTemplates.find(t => t.id === id);
+  if (!tpl) return;
+  const dataDir = document.getElementById('cfgDataDir').value || '(未配置)';
+  document.getElementById('strategyPrompt').value = tpl.prompt
+    .replace('{data_file}', dataDir + '/沪深300_*.csv')
+    .replace('{results_dir}', dataDir + '/strategy_results')
+    .replace('{holdings}', '摩根全球多元配置/纳指100ETF/春秋航空/大秦铁路/红利低波ETF等');
+}
+
+function copyPromptToClipboard() {
+  const text = document.getElementById('strategyPrompt').value;
+  if (!text) { alert('请先输入或选择策略指令'); return; }
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target; btn.textContent = '已复制'; setTimeout(() => btn.textContent = '复制到剪贴板', 1500);
+  });
+}
+
+async function runStrategy() {
+  var prompt = document.getElementById('strategyPrompt').value;
+  if (!prompt) { alert('请先输入或选择策略指令'); return; }
+
+  var app = document.getElementById('cfgAiTool').value || 'AI 编程应用';
+  var appPath = document.getElementById('cfgAiPath').value;
+  var dataDir = document.getElementById('cfgDataDir').value;
+
+  await navigator.clipboard.writeText(prompt);
+
+  if (appPath) {
+    try {
+      var r = await fetch(API_BASE + '/api/v1/strategy/launch-app', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ path: appPath, workspace: dataDir })
+      });
+      var d = await r.json();
+      if (d.status === 'launched') {
+        var out = document.getElementById('strategyOutput');
+        out.style.display = 'block';
+        out.innerHTML = '<div style="padding:10px;border-radius:8px;background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);color:var(--accent-emerald);font-size:12px;font-weight:600;">✓ ' + app + ' 已启动，策略指令已复制到剪贴板，请粘贴执行</div>';
+      } else {
+        alert('启动失败，请手动打开 ' + app);
+      }
+    } catch(e) {
+      alert('策略指令已复制到剪贴板，请打开 ' + app + ' 粘贴执行');
+    }
+  } else {
+    alert('策略指令已复制到剪贴板。\n请先在"应用与数据配置"中设置 AI 应用路径，或手动打开 ' + app + ' 粘贴执行。');
+  }
+}
+
+async function loadStrategyResults() {
+  const el = document.getElementById('resultsList');
+  try {
+    const r = await fetch(API_BASE + '/api/v1/strategy/results');
+    const d = await r.json();
+    if (d.results && d.results.length > 0) {
+      el.innerHTML = d.results.map(r =>
+        `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border-subtle);">
+          <div>
+            <div style="color:var(--text-primary); font-weight:600;">${r.name}</div>
+            <div style="font-size:10px; color:var(--text-muted);">${r.created} · ${r.script}</div>
+          </div>
+          <span style="font-size:10px; padding:2px 8px; border-radius:10px; background:rgba(99,102,241,0.1); color:var(--accent-cyan);">${r.status}</span>
+        </div>`
+      ).join('');
+    } else {
+      el.innerHTML = '<div style="padding:12px; text-align:center;">暂无策略结果</div>';
+    }
+  } catch(e) { el.innerHTML = '加载失败'; }
+}
+
+function onAiToolChange() {
+  const tool = document.getElementById('cfgAiTool').value;
+  const pathInput = document.getElementById('cfgAiPath');
+  if (tool && !pathInput.value) {
+    const hints = { trae: '如 C:\\Program Files\\Trae\\Trae.exe', claude: '命令行名称，如 claude', cursor: '命令行名称，如 cursor', copilot: '命令行名称，如 copilot', windsurf: '命令行名称，如 windsurf' };
+    pathInput.placeholder = hints[tool] || '应用路径';
+  }
+}
+
+async function pickFile(id) {
+  try {
+    const r = await fetch(API_BASE + '/api/v1/system/file-dialog', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({filetypes: [["Executable files", "*.exe"], ["All files", "*.*"]]})
+    });
+    const d = await r.json();
+    if (d.path) document.getElementById(id).value = d.path;
+  } catch(e) { alert('打开文件对话框失败: ' + e.message); }
+}
+
+async function pickFolder(id) {
+  try {
+    const r = await fetch(API_BASE + '/api/v1/system/folder-dialog', {method:'POST'});
+    const d = await r.json();
+    if (d.path) document.getElementById(id).value = d.path;
+  } catch(e) { alert('打开文件夹对话框失败: ' + e.message); }
+}
+
+/* ═══════════════════════════════════════════
+   页面初始化
+   ═══════════════════════════════════════════ */
+
+window.addEventListener('load', () => {
+  // ─── 全局防缓存：拦截 fetch 请求自动附加时间戳 ───
+  const _origFetch = window.fetch;
+  window.fetch = function(url, opts) {
+    let u = url;
+    if (typeof u === 'string' && !u.includes('_t=') && (u.startsWith('/api/') || u.endsWith('.html'))) {
+      const sep = u.includes('?') ? '&' : '?';
+      u = u + sep + '_t=' + Date.now();
+    }
+    return _origFetch(u, opts);
+  };
+
+  // 更新时间
+  const now = new Date();
+  const el = document.getElementById('headerTime');
+  if (el) el.textContent = now.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' }) + ' ' + now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+  // 用 mock 数据渲染旭日图
+  renderSunburst(MOCK_SUNBURST);
+  renderDeviationBars({});
+
+  // 异步尝试从 API 获取真实数据
+  loadTacticalData();
+
+  // 加载策略中心
+  loadStrategySettings();
+  loadDataFiles();
+  loadPromptTemplates();
+  loadStrategyResults();
+
+  // 数据类型下拉切换：自定义代码输入框显隐
+  const dlType = document.getElementById('dlDataType');
+  if (dlType) {
+    dlType.addEventListener('change', () => {
+      const wrap = document.getElementById('dlCustomCodeWrap');
+      if (wrap) wrap.style.display = dlType.value === 'custom' ? 'block' : 'none';
+    });
+  }
+
+  // ─── 全局防缓存：拦截所有页面内 <a> 跳转，自动附加时间戳 ───
+  document.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && href.endsWith('.html') && !href.includes('_t=')) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const sep = href.includes('?') ? '&' : '?';
+        window.location.href = href + sep + '_t=' + Date.now();
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>

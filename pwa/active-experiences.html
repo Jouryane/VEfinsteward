@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VE5 — 活跃经验</title>
+<style>
+:root {
+  --bg-primary: #0b0d14;
+  --bg-elevated: #131620;
+  --bg-card: #181c27;
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0b0;
+  --text-muted: #5f6570;
+  --border-subtle: rgba(255,255,255,0.06);
+  --border-active: rgba(99,102,241,0.3);
+  --accent-indigo: #818cf8;
+  --accent-cyan: #22d3ee;
+  --accent-emerald: #34d399;
+  --accent-rose: #f43f5e;
+  --accent-amber: #fbbf24;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --mono: 'SF Mono','Fira Code','Consolas',monospace;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family: 'Inter',-apple-system,sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+.bg-grid {
+  position:fixed; inset:0; z-index:0; opacity:0.03;
+  background-image: linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+.app { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:24px 20px 60px; }
+.header { display:flex; align-items:center; gap:16px; margin-bottom:32px; }
+.brand-mark { width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#6366f1,#22d3ee); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px; }
+.brand-title { font-size:20px; font-weight:700; }
+.brand-sub { font-size:10px; color:var(--text-muted); letter-spacing:2px; }
+.back-link { display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--accent-indigo); text-decoration:none; margin-bottom:20px; }
+
+/* Legend */
+.legend { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-secondary); }
+.legend-dot { width:10px; height:10px; border-radius:50%; }
+
+/* pipeline */
+.pipeline {
+  background:var(--bg-card);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-lg);
+  padding:24px;
+  margin-bottom:24px;
+}
+.pipeline-title { font-size:14px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+
+.pipeline-flow {
+  display:flex; align-items:center; gap:8px;
+  overflow-x:auto; padding-bottom:8px;
+}
+.pipeline-step {
+  flex:0 0 180px; padding:14px; border-radius:var(--radius-md);
+  border:1px solid var(--border-subtle);
+  text-align:center;
+  position:relative;
+}
+.pipeline-step-icon { font-size:22px; margin-bottom:6px; }
+.pipeline-step-name { font-size:12px; font-weight:700; margin-bottom:3px; }
+.pipeline-step-desc { font-size:10px; color:var(--text-muted); line-height:1.4; }
+.pipeline-arrow { font-size:18px; color:var(--text-muted); flex-shrink:0; }
+
+.pipeline-step.encoder { border-color:rgba(99,102,241,0.25); background:rgba(99,102,241,0.04); }
+.pipeline-step.matcher { border-color:rgba(34,211,238,0.2); background:rgba(34,211,238,0.03); }
+.pipeline-step.controller { border-color:rgba(251,191,36,0.2); background:rgba(251,191,36,0.03); }
+.pipeline-step.executor { border-color:rgba(52,211,153,0.2); background:rgba(52,211,153,0.03); }
+.pipeline-step.llm { border-color:rgba(244,63,94,0.15); background:rgba(244,63,94,0.03); }
+
+/* section */
+.section-title { font-size:13px; font-weight:700; color:var(--text-secondary); letter-spacing:1px; margin:28px 0 12px; display:flex; align-items:center; gap:8px; }
+.section-title::after { content:''; flex:1; height:1px; background:var(--border-subtle); }
+
+/* experience card */
+.exp-card {
+  background:var(--bg-card);
+  border:1px solid var(--border-subtle);
+  border-radius:var(--radius-md);
+  padding:20px;
+  margin-bottom:16px;
+}
+.exp-card-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.exp-card-icon { font-size:22px; }
+.exp-card-name { font-size:14px; font-weight:600; }
+.exp-card-trigger { font-size:11px; color:var(--text-muted); }
+.exp-card-meta { margin-left:auto; display:flex; align-items:center; gap:12px; }
+
+/* confidence bar */
+.conf-bar-wrap { margin:8px 0 14px; }
+.conf-bar-label { display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px; }
+.conf-bar-label-left { color:var(--text-secondary); }
+.conf-bar-label-right { font-family:var(--mono); }
+.conf-bar {
+  height:6px; border-radius:3px; background:rgba(255,255,255,0.06);
+  position:relative; overflow:hidden;
+}
+.conf-bar-fill { height:100%; border-radius:3px; transition:width 0.5s; }
+.conf-bar-fill.automatic { background:linear-gradient(90deg,var(--accent-cyan),var(--accent-emerald)); }
+.conf-bar-fill.learning { background:linear-gradient(90deg,var(--accent-amber),var(--accent-cyan)); }
+.conf-bar-fill.raw { background:rgba(255,255,255,0.12); }
+
+/* factors grid */
+.factors-grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:10px; margin:12px 0;
+}
+.factor-item {
+  padding:10px 12px; border-radius:var(--radius-sm);
+  background:rgba(255,255,255,0.02);
+  border:1px solid var(--border-subtle);
+}
+.factor-name { font-size:10px; color:var(--text-muted); margin-bottom:4px; }
+.factor-value { font-size:16px; font-weight:700; font-family:var(--mono); }
+
+/* thresholds */
+.threshold-marker { position:absolute; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.3); z-index:2; }
+.threshold-label { position:absolute; top:-16px; font-size:9px; color:var(--text-muted); transform:translateX(-50%); white-space:nowrap; }
+
+
+/* empty */
+.empty { text-align:center; padding:60px 0; color:var(--text-muted); }
+.empty-icon { font-size:48px; margin-bottom:12px; }
+
+.loading { text-align:center; padding:40px; color:var(--text-muted); font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<div class="app">
+  <a href="index.html" class="back-link">← 返回财务中枢</a>
+
+  <div class="header">
+    <div class="brand-mark">VE</div>
+    <div>
+      <div class="brand-title">活跃经验</div>
+      <div class="brand-sub">ACTIVE EXPERIENCES · CONFIDENCE DASHBOARD</div>
+    </div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent-cyan);"></div>自动执行 (≥0.75)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent-amber);"></div>学习中 (0.35~0.75)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.12);"></div>探查中 (&lt;0.35)</div>
+    <div class="legend-item" style="margin-left:16px;"><div class="legend-dot" style="background:var(--accent-rose);width:2px;height:10px;border-radius:1px;"></div>Safety Gate 拦截</div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="pipeline">
+    <div class="pipeline-title">🧠 Experience Runtime 调度流水线</div>
+    <div class="pipeline-flow">
+      <div class="pipeline-step encoder">
+        <div class="pipeline-step-icon">📡</div>
+        <div class="pipeline-step-name">State Encoder</div>
+        <div class="pipeline-step-desc">感知当前环境<br/>生成结构化状态</div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step matcher">
+        <div class="pipeline-step-icon">🔍</div>
+        <div class="pipeline-step-name">Experience Matcher</div>
+        <div class="pipeline-step-desc">检索候选经验<br/>三元组匹配</div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step controller">
+        <div class="pipeline-step-icon">⚖</div>
+        <div class="pipeline-step-name">Activation Controller</div>
+        <div class="pipeline-step-desc">Conf×Sim×Safety<br/>判定是否激活</div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step executor">
+        <div class="pipeline-step-icon">⚡</div>
+        <div class="pipeline-step-name">Executor</div>
+        <div class="pipeline-step-desc">绕过 LLM<br/>Template 直出</div>
+      </div>
+      <div class="pipeline-arrow">→</div>
+      <div class="pipeline-step llm">
+        <div class="pipeline-step-icon">🤖</div>
+        <div class="pipeline-step-name">LLM 回退</div>
+        <div class="pipeline-step-desc">未激活时<br/>交还 LLM 处理</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Active Experiences -->
+  <div class="section-title">活跃经验 Confidence 状态</div>
+  <div id="expList"><div class="loading">加载中…</div></div>
+
+  <div id="emptyState" class="empty" style="display:none;">
+    <div class="empty-icon">🧠</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px;">暂无活跃经验</div>
+    <div style="font-size:12px;color:var(--text-muted);">使用 VE 管家创建经验后，这里将展示每个经验的 Confidence 约束状态</div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+let _ve5_token = '';
+(function extractToken() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('ve5_token');
+    if (t) { _ve5_token = t; return; }
+  } catch(e) {}
+  const m = document.cookie.match(/ve5_session_token=([^;]+)/);
+  if (m) _ve5_token = m[1];
+})();
+
+function ve5_fetch(url, options = {}) {
+  let tsUrl = url;
+  if (!url.includes('_t=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    tsUrl = url + sep + '_t=' + Date.now();
+  }
+  // Token 注入：只要有 token 就加，不依赖 URL 开头是 /
+  if (_ve5_token) {
+    options.headers = options.headers || {};
+    options.headers['x-ve5-token'] = _ve5_token;
+  }
+  return fetch(tsUrl, options);
+}
+
+async function ve4_fetchJson(url) {
+  // 补全 URL：pywebview 可能用 file://，相对路径会失败
+  if (!url.startsWith('http') && !url.startsWith('/')) url = '/' + url;
+  if (!url.startsWith('http')) {
+    // 修复：window.location.origin 在 file:// 下可能是 null 或字符串 "null"
+    const origin = window.location.origin;
+    const base = (origin && origin !== 'null' && !origin.startsWith('file://'))
+      ? origin
+      : 'http://127.0.0.1:54953';
+    url = base + url;
+  }
+  try { const r = await ve5_fetch(url); if (!r.ok) return null; return await r.json(); }
+  catch(e) { console.error(e); return null; }
+}
+
+function pct(v) { return v != null ? (v*100).toFixed(1)+'%' : '—'; }
+function num(v) { return v != null ? v : 0; }
+
+function renderConfidenceBar(exp) {
+  const conf = exp.confidence || 0;
+  const pa = exp.prediction_accuracy || 0;
+  const freq = exp.frequency || 0;
+  const succ = exp.success_count || 0;
+  const fail = exp.failure_count || 0;
+  const level = exp.level || 'raw';
+  const lastUsed = exp.last_used ? exp.last_used.slice(0,10) : '从未';
+  const origin = exp.origin || {};
+  const safetyFactors = exp._safety_factors || [];
+
+  // Compute the 4 sub-factors
+  const paVal = succ / (succ + fail + 1);
+  const ufVal = Math.min(freq, 10) / 10;
+  const uaVal = (succ + 1) / (succ + fail + 2);
+  const rVal = 1.0; // simplified
+
+  const barCls = level === 'automatic' ? 'automatic' : level === 'learning' ? 'learning' : 'raw';
+  const pctDisplay = Math.round(conf * 100);
+
+  return `
+  <div class="exp-card" style="border-left:3px solid ${level==='automatic'?'var(--accent-cyan)':level==='learning'?'var(--accent-amber)':'rgba(255,255,255,0.15)'}">
+    <div class="exp-card-header">
+      <div class="exp-card-icon">${level==='automatic'?'⚡':level==='learning'?'🧪':'🔬'}</div>
+      <div>
+        <div class="exp-card-name">${exp.name}</div>
+        <div class="exp-card-trigger">触发: ${exp.trigger_event||'?'} · ${lastUsed} · ${freq}次</div>
+      </div>
+      <div class="exp-card-meta">
+        <span style="font-size:22px;font-weight:800;font-family:var(--mono);color:${level==='automatic'?'var(--accent-cyan)':level==='learning'?'var(--accent-amber)':'var(--text-muted)'}">${pctDisplay}</span>
+        <span style="font-size:10px;color:var(--text-muted);text-align:center;line-height:1.2;">
+          / 100<br/>
+          ${level==='automatic'?'BYPASS':'level==learning'?'ASSIST':'RAW'}
+        </span>
+      </div>
+    </div>
+
+    <!-- Confidence Bar -->
+    <div class="conf-bar-wrap">
+      <div class="conf-bar-label">
+        <span class="conf-bar-label-left">Confidence</span>
+        <span class="conf-bar-label-right">${pctDisplay}/100</span>
+      </div>
+      <div class="conf-bar" style="position:relative;">
+        <div class="conf-bar-fill ${barCls}" style="width:${pctDisplay}%;"></div>
+        <!-- threshold markers -->
+        <div class="threshold-marker" style="left:35%;" title="learning threshold (0.35)"></div>
+        <div class="threshold-label" style="left:35%;">learning</div>
+        <div class="threshold-marker" style="left:75%;" title="automatic threshold (0.75)"></div>
+        <div class="threshold-label" style="left:75%;">automatic</div>
+      </div>
+    </div>
+
+    <!-- 4-Factor Breakdown -->
+    <div class="factors-grid">
+      <div class="factor-item">
+        <div class="factor-name">预测准确率 PA</div>
+        <div class="factor-value" style="color:${paVal>=0.7?'var(--accent-emerald)':paVal>=0.4?'var(--accent-amber)':'var(--accent-rose)'}">${(paVal*100).toFixed(0)}%</div>
+        <div style="font-size:9px;color:var(--text-muted);">${succ}成 / ${fail}败</div>
+      </div>
+      <div class="factor-item">
+        <div class="factor-name">使用频率 UF</div>
+        <div class="factor-value" style="color:var(--text-secondary)">${freq}</div>
+        <div style="font-size:9px;color:var(--text-muted);">上限10次</div>
+      </div>
+      <div class="factor-item">
+        <div class="factor-name">用户接受度 UA</div>
+        <div class="factor-value" style="color:var(--text-secondary)">${(uaVal*100).toFixed(0)}%</div>
+        <div style="font-size:9px;color:var(--text-muted);">正向/总反馈</div>
+      </div>
+      <div class="factor-item">
+        <div class="factor-name">来源</div>
+        <div class="factor-value" style="color:var(--text-secondary);font-size:13px;">${origin.type||'?'}</div>
+        <div style="font-size:9px;color:var(--text-muted);">${origin.created_reason||'—'}</div>
+      </div>
+    </div>
+
+    ${safetyFactors.length ? `
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border-subtle);">
+      <div style="font-size:10px;color:var(--accent-rose);margin-bottom:4px;">⚠ Safety Gate 拦截因子</div>
+      ${safetyFactors.map(f => `<span style="display:inline-block;font-size:10px;color:var(--text-secondary);background:rgba(244,63,94,0.06);padding:2px 8px;border-radius:10px;margin:2px 4px 2px 0;">${f.factor}: ×${f.multiplier}</span>`).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
+async function load() {
+  const el = document.getElementById('expList');
+  const empty = document.getElementById('emptyState');
+
+  try {
+    const json = await ve4_fetchJson('/api/v1/experiences/list');
+    const exps = (json && json.success && json.experiences) ? json.experiences : [];
+
+    if (!exps || exps.length === 0) {
+      el.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    // Sort: automatic first, then by confidence
+    exps.sort((a,b) => {
+      if (a.level === 'automatic' && b.level !== 'automatic') return -1;
+      if (b.level === 'automatic' && a.level !== 'automatic') return 1;
+      return (b.confidence||0) - (a.confidence||0);
+    });
+
+    el.innerHTML = exps.map(e => renderConfidenceBar(e)).join('');
+  } catch(e) {
+    el.innerHTML = '<div class="loading" style="color:var(--accent-rose)">连接服务失败。<br><small>请确认 VE5 桌面应用正在运行。</small></div>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

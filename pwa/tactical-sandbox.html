@@ -1,0 +1,3383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>VE5 — 资产配置战术</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── Design Tokens (与 index.html 一致) ─── */
+:root {
+  --bg-deep: #050a14;
+  --bg-surface: #0b1321;
+  --bg-elevated: #111d2e;
+  --bg-glass: rgba(17, 29, 46, 0.75);
+  --border-subtle: rgba(148, 163, 184, 0.06);
+  --border-active: rgba(99, 102, 241, 0.35);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-cyan: #22d3ee;
+  --accent-indigo: #6366f1;
+  --accent-emerald: #34d399;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --accent-violet: #a78bfa;
+  --success: #22c55e;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --shadow-elevated: 0 12px 40px rgba(0,0,0,0.5);
+  --mono: 'JetBrains Mono', monospace;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', 'Noto Sans SC', -apple-system, sans-serif;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* ─── App Shell ─── */
+.app {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+}
+
+/* ─── Sidebar ─── */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, var(--bg-surface) 0%, rgba(11,19,33,0.98) 100%);
+  border-right: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  padding: 28px 18px;
+  flex-shrink: 0;
+  position: fixed;
+  height: 100vh;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 10px 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 20px;
+}
+
+.brand-mark {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-cyan));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 15px;
+  color: white;
+}
+
+.brand-title { font-size: 19px; font-weight: 700; letter-spacing: -0.5px; }
+
+.nav-section { margin-bottom: 24px; }
+
+.nav-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); padding: 0 10px; margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  color: var(--text-secondary); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.25s;
+  margin-bottom: 3px;
+  border: 1px solid transparent;
+}
+
+.nav-item:hover {
+  background: rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  transform: translateX(2px);
+}
+
+.nav-item.active {
+  background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(34,211,238,0.06));
+  color: var(--accent-indigo);
+  border-color: var(--border-active);
+}
+
+.nav-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+
+.brand-sub {
+  font-size: 11px; color: var(--text-muted); font-weight: 400;
+  margin-top: 3px; font-family: var(--mono);
+}
+
+/* grayed-out nav item */
+.nav-item-disabled {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  color: var(--text-muted); font-size: 13px; font-weight: 500;
+  margin-bottom: 3px; opacity: 0.45;
+  border: 1px solid transparent;
+  cursor: default; user-select: none;
+}
+
+.nav-badge {
+  margin-left: auto;
+  font-size: 10px; padding: 3px 8px; border-radius: 10px;
+  background: rgba(34,211,238,0.1); color: var(--accent-cyan);
+  font-weight: 700; font-family: var(--mono);
+}
+
+.nav-badge.warn {
+  background: rgba(245,158,11,0.1); color: var(--accent-amber);
+}
+
+/* ─── Bluetooth Status ─── */
+.bt-status {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(34,211,238,0.05), rgba(99,102,241,0.03));
+  border: 1px solid rgba(34,211,238,0.1);
+  margin-top: auto;
+}
+
+.bt-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 12px rgba(34,211,238,0.5);
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+.bt-label {
+  font-size: 12px; font-weight: 700; color: var(--accent-cyan);
+}
+
+.bt-meta {
+  font-size: 11px; color: var(--text-muted); margin-left: auto;
+  font-family: var(--mono);
+}
+
+/* ─── Main Content ─── */
+.main {
+  flex: 1;
+  margin-left: 260px;
+  padding: 32px 36px;
+  min-height: 100vh;
+  background: var(--bg-deep);
+  overflow-y: auto;
+}
+
+.main::-webkit-scrollbar { width: 4px; }
+.main::-webkit-scrollbar-track { background: transparent; }
+.main::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.15); border-radius: 3px; }
+.main::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.3); }
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.1); border-radius: 3px; }
+
+.header {
+  margin-bottom: 28px;
+}
+
+.header-title {
+  font-size: 26px; font-weight: 700; letter-spacing: -0.3px;
+  display: flex; align-items: center; gap: 12px;
+}
+
+.header-title::before {
+  content: ''; width: 4px; height: 28px;
+  background: linear-gradient(180deg, var(--accent-indigo), var(--accent-cyan));
+  border-radius: 2px;
+}
+
+.header-sub {
+  color: var(--text-secondary); font-size: 14px; margin-top: 8px;
+}
+
+/* ─── Tab Bar ─── */
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.25s;
+  font-family: inherit;
+}
+
+.tab-btn:hover {
+  color: var(--text-secondary);
+}
+
+.tab-btn.active {
+  color: var(--accent-indigo);
+  border-bottom-color: var(--accent-indigo);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* ─── Cards ─── */
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  transition: all 0.3s;
+}
+
+.card:hover {
+  border-color: var(--border-active);
+}
+
+/* ─── Section ─── */
+.section {
+  margin-bottom: 28px;
+}
+
+.section-title {
+  font-size: 15px; font-weight: 600;
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+.section-title .icon {
+  width: 22px; height: 22px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+
+/* ─── Input Area ─── */
+.input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.input-field {
+  flex: 1;
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--mono);
+  outline: none;
+  transition: border-color 0.25s;
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+}
+
+.input-field:focus {
+  border-color: var(--border-active);
+}
+
+textarea.input-field {
+  min-height: 120px;
+  resize: vertical;
+  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  line-height: 1.6;
+}
+
+/* ─── Buttons ─── */
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-indigo), rgba(99,102,241,0.8));
+  color: white;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+.btn-secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--border-active);
+}
+
+.btn-danger {
+  background: rgba(244,63,94,0.1);
+  color: var(--accent-rose);
+  border-color: rgba(244,63,94,0.2);
+}
+
+.btn-danger:hover {
+  background: rgba(244,63,94,0.2);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─── Upload Zone ─── */
+.upload-zone {
+  border: 2px dashed var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.upload-zone:hover {
+  border-color: var(--border-active);
+  color: var(--text-secondary);
+  background: rgba(99,102,241,0.03);
+}
+
+.upload-zone.dragover {
+  border-color: var(--accent-indigo);
+  background: rgba(99,102,241,0.06);
+}
+
+.upload-zone .upload-icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.upload-zone .upload-text {
+  font-size: 13px;
+}
+
+.upload-zone .upload-hint {
+  font-size: 11px;
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+/* ─── Knowledge Base List ─── */
+.kb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.kb-item {
+  padding: 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+
+.kb-item:hover {
+  border-color: var(--border-active);
+}
+
+.kb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.kb-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kb-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.kb-summary {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.kb-detail {
+  display: none;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.kb-item.expanded .kb-detail {
+  display: block;
+}
+
+.kb-tag {
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.kb-tag-high {
+  background: rgba(52,211,153,0.12);
+  color: var(--accent-emerald);
+}
+
+.kb-tag-medium {
+  background: rgba(245,158,11,0.12);
+  color: var(--accent-amber);
+}
+
+.kb-tag-low {
+  background: rgba(148,163,184,0.12);
+  color: var(--text-muted);
+}
+
+/* ─── Holdings Impact ─── */
+.impact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.impact-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.impact-action {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.impact-buy {
+  background: rgba(34,211,153,0.12);
+  color: var(--accent-emerald);
+}
+
+.impact-sell {
+  background: rgba(244,63,94,0.12);
+  color: var(--accent-rose);
+}
+
+.impact-hold {
+  background: rgba(148,163,184,0.12);
+  color: var(--text-secondary);
+}
+
+.impact-name {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.impact-reason {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex: 2;
+}
+
+/* ─── Data Source Status ─── */
+.ds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.ds-card {
+  padding: 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+}
+
+.ds-card:hover {
+  border-color: var(--border-active);
+}
+
+.ds-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ds-dot.on { background: var(--accent-emerald); box-shadow: 0 0 8px rgba(34,211,153,0.4); }
+.ds-dot.off { background: var(--text-muted); }
+
+.ds-info { flex: 1; min-width: 0; }
+
+.ds-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ds-status {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.ds-config-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(99,102,241,0.1);
+  color: var(--accent-indigo);
+  border: 1px solid rgba(99,102,241,0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+  font-weight: 600;
+}
+
+.ds-config-btn:hover {
+  background: rgba(99,102,241,0.2);
+}
+
+/* ─── Modal ─── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,10,20,0.85);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 28px;
+  width: 90%;
+  max-width: 480px;
+  box-shadow: var(--shadow-elevated);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.25s;
+}
+
+.modal-close:hover {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-primary);
+}
+
+.modal-field {
+  margin-bottom: 16px;
+}
+
+.modal-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.modal-input {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: var(--mono);
+  outline: none;
+  transition: border-color 0.25s;
+}
+
+.modal-input:focus {
+  border-color: var(--border-active);
+}
+
+.modal-input::placeholder {
+  color: var(--text-muted);
+}
+
+.modal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.modal-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-indigo);
+  cursor: pointer;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+/* ─── Code Editor ─── */
+.code-editor {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.code-editor textarea {
+  width: 100%;
+  min-height: 240px;
+  padding: 16px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--accent-cyan);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  outline: none;
+  resize: vertical;
+  tab-size: 4;
+}
+
+.code-editor textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.code-editor textarea:focus {
+  border-color: var(--border-active);
+}
+
+/* ─── Execution Result ─── */
+.result-area {
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  min-height: 120px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.result-area .result-label {
+  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+/* ─── LLM Interpretation ─── */
+.llm-output {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.llm-output .llm-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-violet);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── Two Column Layout ─── */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* ─── Strategy Template ─── */
+.template-select {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.template-chip {
+  padding: 8px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+}
+
+.template-chip:hover {
+  border-color: var(--border-active);
+  color: var(--text-primary);
+}
+
+.template-chip.active {
+  background: rgba(99,102,241,0.12);
+  border-color: var(--accent-indigo);
+  color: var(--accent-indigo);
+}
+
+/* ─── AI 助手模式 ─── */
+.ai-mode-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  border: 1px solid var(--border-subtle);
+}
+
+.ai-mode-btn {
+  flex: 1;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: inherit;
+}
+
+.ai-mode-btn:hover {
+  color: var(--text-secondary);
+}
+
+.ai-mode-btn.active {
+  background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(167,139,250,0.1));
+  color: var(--accent-indigo);
+  font-weight: 600;
+}
+
+.ai-prompt-box {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.ai-prompt-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-violet);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ai-prompt-input {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.25s;
+}
+
+.ai-prompt-input:focus {
+  border-color: var(--border-active);
+}
+
+.ai-prompt-input::placeholder {
+  color: var(--text-muted);
+}
+
+.ai-generate-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ai-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+/* ─── MCP 配置向导 ─── */
+.mcp-guide {
+  background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(34,211,238,0.04));
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.mcp-guide-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-indigo);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mcp-guide-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.mcp-guide-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mcp-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.mcp-step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(99,102,241,0.15);
+  color: var(--accent-indigo);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mcp-config-code {
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent-cyan);
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-bottom: 12px;
+}
+
+.mcp-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(167,139,250,0.12);
+  color: var(--accent-violet);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ─── Empty State ─── */
+.empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.empty-state .empty-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* ─── Loading ─── */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(5,10,20,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  z-index: 10;
+}
+
+.loading-spinner {
+  width: 28px; height: 28px;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--accent-indigo);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Strategy Detail Modal ─── */
+.strategy-detail-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,10,20,0.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1500;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  backdrop-filter: blur(8px);
+}
+
+.strategy-detail-modal.active {
+  display: flex;
+  opacity: 1;
+}
+
+.strategy-detail-panel {
+  background: linear-gradient(180deg, rgba(15,25,40,0.98), rgba(10,18,30,0.98));
+  border: 1px solid rgba(99,102,241,0.2);
+  border-radius: 16px;
+  width: 90vw;
+  max-width: 960px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 32px 100px rgba(0,0,0,0.6), 0 0 0 1px rgba(99,102,241,0.1);
+  transform: scale(0.96);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.strategy-detail-modal.active .strategy-detail-panel {
+  transform: scale(1);
+}
+
+.strategy-detail-header {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  background: linear-gradient(90deg, rgba(99,102,241,0.06), transparent);
+}
+
+.strategy-detail-header h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.2px;
+}
+
+.strategy-detail-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+
+.strategy-detail-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.strategy-detail-close:hover {
+  background: var(--accent-rose);
+  color: white;
+  border-color: transparent;
+  transform: rotate(90deg);
+}
+
+.strategy-detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Custom scrollbar */
+.strategy-detail-body::-webkit-scrollbar { width: 6px; }
+.strategy-detail-body::-webkit-scrollbar-track { background: transparent; }
+.strategy-detail-body::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 3px; }
+.strategy-detail-body::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+
+.strategy-detail-section {
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 18px 22px;
+  position: relative;
+  transition: border-color 0.2s;
+}
+
+.strategy-detail-section:hover {
+  border-color: rgba(99,102,241,0.15);
+}
+
+.strategy-detail-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.strategy-detail-section-title::before {
+  content: '';
+  width: 3px;
+  height: 14px;
+  background: linear-gradient(180deg, var(--accent-cyan), var(--accent-indigo));
+  border-radius: 2px;
+}
+
+.strategy-detail-strategy {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-indigo);
+}
+
+.strategy-detail-result {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-subtle);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* Images */
+.strategy-detail-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.strategy-detail-image {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.strategy-detail-image::after {
+  content: '\1F50D';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 24px;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+}
+
+.strategy-detail-image:hover {
+  border-color: var(--border-active);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+}
+
+.strategy-detail-image:hover::after {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 0.9;
+}
+
+.strategy-detail-image:hover img {
+  opacity: 0.6;
+  filter: brightness(0.7);
+}
+
+.strategy-detail-image img {
+  width: 100%;
+  display: block;
+  transition: all 0.3s;
+}
+
+.strategy-detail-image-name {
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.strategy-detail-llm {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg-elevated);
+  border-radius: 10px;
+  padding: 14px 18px;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-emerald);
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+/* Chat */
+.strategy-detail-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.strategy-detail-chat-msg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  animation: chatFadeIn 0.3s ease;
+}
+
+@keyframes chatFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.strategy-detail-chat-msg.user {
+  flex-direction: row-reverse;
+}
+
+.strategy-detail-chat-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.strategy-detail-chat-msg.user .strategy-detail-chat-avatar {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
+  color: white;
+  border-color: transparent;
+}
+
+.strategy-detail-chat-msg.assistant .strategy-detail-chat-avatar {
+  background: linear-gradient(135deg, var(--accent-emerald), var(--accent-amber));
+  color: white;
+  border-color: transparent;
+}
+
+.strategy-detail-chat-bubble {
+  max-width: 72%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-all;
+}
+
+.strategy-detail-chat-msg.user .strategy-detail-chat-bubble {
+  background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(14,165,233,0.12));
+  border: 1px solid rgba(99,102,241,0.18);
+  color: var(--text-primary);
+  border-bottom-right-radius: 4px;
+}
+
+.strategy-detail-chat-msg.assistant .strategy-detail-chat-bubble {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-bottom-left-radius: 4px;
+}
+
+.strategy-detail-chat-input-area {
+  display: flex;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 4px;
+}
+
+.strategy-detail-chat-input {
+  flex: 1;
+  padding: 11px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.strategy-detail-chat-input:focus {
+  border-color: var(--border-active);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+}
+
+.strategy-detail-chat-send {
+  padding: 11px 24px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
+  color: white;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.strategy-detail-chat-send:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+}
+
+/* Strategy History */
+.strategy-history-item {
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.strategy-history-item:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+}
+
+.strategy-history-item.active {
+  background: rgba(99,102,241,0.08);
+  border-color: rgba(99,102,241,0.25);
+}
+
+/* Image Lightbox */
+.img-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,10,20,0.94);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  z-index: 2000;
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.img-lightbox.active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.img-lightbox-inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 92vw;
+  max-height: 88vh;
+}
+
+.img-lightbox img {
+  max-width: 92vw;
+  max-height: 88vh;
+  border-radius: 12px;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  display: block;
+  object-fit: contain;
+}
+
+.img-lightbox-close {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(17,29,46,0.8);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 2001;
+}
+
+.img-lightbox-close:hover {
+  background: var(--accent-rose);
+  color: white;
+  border-color: transparent;
+  transform: rotate(90deg);
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 1200px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { margin-left: 0; padding: 20px; }
+  .ds-grid { grid-template-columns: 1fr; }
+  .strategy-detail-panel { width: 95vw; }
+  .strategy-detail-images { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">VE</div>
+      <div>
+        <div class="brand-title">VE5</div>
+        <div class="brand-sub">PRIVACY-FIRST FINANCE</div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">核心</div>
+      <a href="index.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">◆</span>
+        <span>财务中枢</span>
+      </a>
+      <div class="nav-item" onclick="goToAccountOverview()" style="cursor:pointer;">
+        <span class="nav-icon">⊕</span>
+        <span>账户总览</span>
+        <span class="nav-badge" id="accountNavBadge">--</span>
+      </div>
+      <a href="asset-allocation.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">◈</span>
+        <span>资产配置</span>
+      </a>
+      <a href="tactical-planning.html" class="nav-item" style="color:inherit; text-decoration:none;">
+        <span class="nav-icon">◉</span>
+        <span>战术规划</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">战术沙盘</div>
+      <div class="nav-item active">
+        <span class="nav-icon">◊</span>
+        <span>资产配置战术</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">数据流</div>
+      <div class="nav-item">
+        <span class="nav-icon">⇅</span>
+        <span>数据同步</span>
+        <span class="nav-badge warn">2</span>
+      </div>
+      <a href="dataflow-status.html" class="nav-item" style="text-decoration:none;color:inherit;">
+        <span class="nav-icon">▣</span>
+        <span>数据流监控</span>
+        <span class="nav-badge">ON</span>
+      </a>
+      <a href="rag-hub.html" class="nav-item" style="text-decoration:none;color:inherit;">
+        <span class="nav-icon">&#x1F9E0;</span>
+        <span>隐私 RAG 管理</span>
+      </a>
+      <a href="bot-hub.html" class="nav-item" style="text-decoration:none;color:inherit;">
+        <span class="nav-icon">&#x1F916;</span>
+        <span>Bot 云端渠道</span>
+      </a>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">📧</span>
+        <span>邮件抓取</span>
+      </div>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">📋</span>
+        <span>流水导入</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">AI 助手</div>
+      <a href="life-steward.html" class="nav-item" style="text-decoration:none;color:inherit;">
+        <span class="nav-icon">✦</span>
+        <span>生活管家</span>
+      </a>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">⚙</span>
+        <span>量化策略</span>
+      </div>
+      <div class="nav-item-disabled">
+        <span class="nav-icon">🔐</span>
+        <span>隐私代理</span>
+      </div>
+    </div>
+
+    <div class="bt-status">
+      <div class="bt-dot"></div>
+      <span class="bt-label">已连接蓝牙设备</span>
+    </div>
+
+    <div class="bt-status">
+      <div class="bt-dot"></div>
+      <span class="bt-label">蓝牙监听中</span>
+      <span class="bt-meta">3 设备</span>
+    </div>
+  </aside>
+
+<!-- Main -->
+<main class="main">
+  <div class="header">
+    <div class="header-title">资产配置战术</div>
+    <div class="header-sub">基于基本面与量化信号，判断当前该买什么、卖什么、调什么</div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="fundamental">基本面分析</button>
+    <button class="tab-btn" data-tab="quantitative">量化分析</button>
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- Tab 1: 基本面分析                             -->
+  <!-- ════════════════════════════════════════════ -->
+  <div id="tab-fundamental" class="tab-content active">
+
+    <!-- 研报/新闻输入区 -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon" style="background:rgba(99,102,241,0.12);color:var(--accent-indigo);">📥</span>
+        输入研报或新闻
+      </div>
+
+      <!-- URL 输入 -->
+      <div class="input-group">
+        <input type="text" class="input-field" id="reportUrl"
+               placeholder="粘贴研报 URL（如东方财富、券商研报链接）">
+        <button class="btn btn-primary" onclick="ve4_parseUrl()">解析</button>
+      </div>
+
+      <!-- PDF 上传 -->
+      <div class="upload-zone" id="uploadZone"
+           onclick="document.getElementById('pdfInput').click()">
+        <span class="upload-icon">📄</span>
+        <div class="upload-text">点击或拖拽上传研报 PDF</div>
+        <div class="upload-hint">支持 .pdf 文件</div>
+        <input type="file" id="pdfInput" accept=".pdf" style="display:none"
+               onchange="ve4_uploadPdf(this)">
+      </div>
+
+      <!-- 文本粘贴 -->
+      <textarea class="input-field" id="reportText"
+                placeholder="或直接粘贴研报/新闻文本内容..."></textarea>
+      <div style="margin-top:10px;">
+        <button class="btn btn-primary" onclick="ve4_parseText()">解析文本</button>
+      </div>
+    </div>
+
+    <!-- 研报知识库 -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon" style="background:rgba(34,211,238,0.12);color:var(--accent-cyan);">📚</span>
+        研报知识库
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px;">RAG 向量存储 · 语义检索</span>
+      </div>
+      <!-- 搜索 + 隐私开关 -->
+      <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+        <div class="input-group" style="flex:1;min-width:200px;margin-bottom:0;">
+          <input type="text" class="input-field" id="kbSearchInput"
+                 style="font-size:13px;padding:8px 12px;"
+                 placeholder="🔍 语义检索知识库（如：新能源、消费升级...）"
+                 onkeydown="if(event.key==='Enter')ve4_searchKnowledge()">
+          <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px;" onclick="ve4_searchKnowledge()">搜索</button>
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="privacyModeToggle" onchange="ve4_togglePrivacyMode(this)">
+          <span title="开启后持仓影响评估使用云端 AI（默认本地规则保护隐私）">允许云端 AI 分析持仓</span>
+        </label>
+      </div>
+      <div id="kbList" class="kb-list">
+        <div class="empty-state">
+          <div class="empty-icon">📊</div>
+          <div>尚无解析记录</div>
+          <div style="font-size:11px;margin-top:4px;">上传研报或粘贴 URL 后，分析结果将自动存入向量知识库</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 持仓影响评估 -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon" style="background:rgba(245,158,11,0.12);color:var(--accent-amber);">🎯</span>
+        持仓影响评估
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px;">基于知识库观点关联用户持仓</span>
+      </div>
+      <div id="impactList" class="impact-list">
+        <div class="empty-state">
+          <div class="empty-icon">🔗</div>
+          <div>需要先解析研报才能评估持仓影响</div>
+          <div style="font-size:11px;margin-top:4px;">系统将自动关联研报观点与您的持仓，给出加仓/减仓/持有建议</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI 基本面对话窗口 -->
+    <div class="section" style="margin-top:16px;">
+      <div class="section-title">
+        <span class="icon" style="background:rgba(168,85,247,0.12);color:#a855f7;">🤖</span>
+        AI 基本面分析助手
+        <span style="font-size:11px;color:var(--text-muted);font-weight:400;margin-left:8px;">基于 RAG 知识库回答</span>
+      </div>
+      <div id="fundChatBox" style="height:280px;overflow-y:auto;border:1px solid var(--border-subtle);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg-card);">
+        <div style="color:var(--text-muted);font-size:13px;text-align:center;padding-top:80px;">
+          基于研报知识库的基本面分析对话。输入你的问题开始。<br>
+          <span style="font-size:11px;">示例：最近研报对AI板块有什么看法？债市后市如何？</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" class="input-field" id="fundChatInput"
+               style="flex:1;font-size:13px;padding:10px 14px;"
+               placeholder="输入基本面分析问题..."
+               onkeydown="if(event.key==='Enter')ve4_fundChatSend()">
+        <button class="btn btn-primary" style="font-size:13px;padding:10px 18px;white-space:nowrap;" onclick="ve4_fundChatSend()">发送</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- Tab 2: 量化分析                             -->
+  <!-- ════════════════════════════════════════════ -->
+  <div id="tab-quantitative" class="tab-content">
+
+    <!-- 数据源配置 -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon" style="background:rgba(52,211,153,0.12);color:var(--accent-emerald);">🔌</span>
+        数据源
+      </div>
+
+      <div id="dsGrid" class="ds-grid">
+        <!-- 动态渲染 -->
+      </div>
+
+      <!-- 本地数据路径 -->
+      <div class="input-group">
+        <input type="text" class="input-field" id="localDataPath"
+               placeholder="输入本地数据文件路径（CSV / Excel）">
+        <button class="btn btn-secondary" onclick="ve4_loadLocalData()">加载</button>
+      </div>
+    </div>
+
+    <!-- AI Coding 应用配置（首次显示，可关闭） -->
+    <div class="mcp-guide" id="appConfigGuide" style="display:none;">
+      <div class="mcp-guide-title">
+        <span>🛠️</span> 配置 AI 编程应用
+      </div>
+      <div class="mcp-guide-desc">
+        选择你电脑上安装的 AI 编程应用，VE4 会自动启动它来帮你实现策略代码。
+        未安装？<a href="https://www.trae.ai" target="_blank" style="color:var(--accent-indigo);text-decoration:underline;">下载 Trae Work</a>
+      </div>
+
+      <!-- 工作目录配置 -->
+      <div style="margin-bottom:16px;padding:14px;background:var(--bg-elevated);border-radius:var(--radius-sm);border:1px solid var(--border-subtle);">
+        <div class="modal-label" style="margin-bottom:8px;">策略工作目录（AI 应用打开的目标文件夹）</div>
+        <div class="input-group" style="margin-bottom:0;">
+          <input type="text" class="input-field" id="wsDirInput"
+                 style="font-size:12px;padding:10px 12px;"
+                 placeholder="默认: ve4/tactical/">
+          <button class="btn btn-secondary" style="font-size:11px;padding:8px 12px;" onclick="ve4_browseWsDir()">浏览</button>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">AI Coding 应用打开此目录，策略任务文件和输出结果存放在此</div>
+      </div>
+
+      <!-- 应用列表 -->
+      <div class="mcp-guide-steps" id="appList">
+        <!-- 动态渲染 -->
+      </div>
+      <div class="mcp-actions">
+        <button class="btn btn-secondary" onclick="ve4_closeAppGuide()">关闭</button>
+      </div>
+    </div>
+
+    <!-- 策略描述 + 实现结果 -->
+    <div class="two-col">
+      <!-- 左列：策略描述 -->
+      <div class="section">
+        <div class="section-title">
+          <span class="icon" style="background:rgba(167,139,250,0.12);color:var(--accent-violet);">⚙️</span>
+          策略描述
+          <button class="ds-config-btn" style="margin-left:auto;" onclick="ve4_toggleAppGuide()">🛠️ 应用设置</button>
+        </div>
+
+        <!-- 模式切换：手动编辑 / AI 辅助 -->
+        <div class="ai-mode-bar">
+          <button class="ai-mode-btn active" id="modeManual" onclick="ve4_setStrategyMode('manual')">手动编辑策略</button>
+          <button class="ai-mode-btn" id="modeAI" onclick="ve4_setStrategyMode('ai')">AI 辅助策略</button>
+        </div>
+
+        <!-- 策略编辑区 -->
+        <div class="ai-prompt-box">
+          <textarea class="ai-prompt-input" id="strategyDesc"
+                    style="min-height:160px;"
+                    placeholder="描述你的投资策略思路，例如：&#10;&#10;当沪深300指数在3天内回撤幅度达到5%以上时，在第三天以收盘价买入，回测持有期胜率和收益率。&#10;&#10;数据源：沪深300指数日K线&#10;持有期：30天&#10;回测区间：2019年至今"></textarea>
+          <div class="ai-hint" id="aiHint" style="display:none;">
+            ⚠️ AI 生成的策略描述可能包含幻觉（不准确的信息），必须经过验证后才能作为投资依据。
+          </div>
+        </div>
+
+        <!-- AI 辅助模式：输入投资思路 -->
+        <div id="aiAssistPanel" style="display:none;">
+          <div class="ai-prompt-box">
+            <div class="ai-prompt-label">
+              <span>🤖</span> 输入你的投资思路（AI 将帮你完善为结构化策略）
+            </div>
+            <textarea class="ai-prompt-input" id="investIdea"
+                      style="min-height:100px;"
+                      placeholder="用大白话描述你的想法，例如：&#10;&#10;我想看看每次大跌之后买入沪深300，持有一个月，历史胜率高不高"></textarea>
+            <div class="ai-generate-row">
+              <button class="btn btn-primary" onclick="ve4_assistStrategy()">AI 完善策略</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button class="btn btn-primary" onclick="ve4_launchTask()">实现策略</button>
+          <button class="btn btn-secondary" onclick="ve4_readResults()">读取结果</button>
+          <button class="btn btn-secondary" onclick="ve4_clearResults()">清空结果</button>
+        </div>
+        <div class="ai-hint" style="margin-top:10px;">
+          💡 "实现策略"将打开 AI 编程应用并生成任务文件，在应用中完成编程后回到 VE5 点击"读取结果"
+        </div>
+
+        <!-- 策略历史列表 -->
+        <div id="mainStrategyHistorySection" style="margin-top:20px;display:none;">
+          <div class="section-title" style="margin-bottom:10px;">
+            <span class="icon" style="background:rgba(167,139,250,0.12);color:var(--accent-violet);">📋</span>
+            历史策略（点击查看详情）
+          </div>
+          <div id="mainStrategyHistoryList" style="max-height:220px;overflow-y:auto;"></div>
+        </div>
+      </div>
+
+      <!-- 右列：结果展示 -->
+      <div class="section">
+        <div class="section-title">
+          <span class="icon" style="background:rgba(34,211,238,0.12);color:var(--accent-cyan);">📈</span>
+          策略结果
+        </div>
+
+        <!-- 状态提示 -->
+        <div id="resultStatus" class="result-area" style="margin-bottom:20px;">
+          <div class="result-label">状态</div>
+          <div id="resultStatusText">等待策略实现...</div>
+        </div>
+
+        <!-- 文本结果 -->
+        <div id="textResultArea" class="result-area" style="margin-bottom:20px;display:none;">
+          <div class="result-label">分析结果</div>
+          <pre id="textResult" style="white-space:pre-wrap;font-size:13px;line-height:1.8;"></pre>
+        </div>
+
+        <!-- CSV 预览 -->
+        <div id="csvResultArea" class="result-area" style="margin-bottom:20px;display:none;">
+          <div class="result-label">数据表格</div>
+          <pre id="csvPreview" style="white-space:pre-wrap;font-size:12px;line-height:1.6;font-family:var(--mono);overflow-x:auto;"></pre>
+        </div>
+
+        <!-- 图片结果 -->
+        <div id="imageResultArea" style="margin-bottom:20px;display:none;">
+          <div class="result-label" style="font-family:'Inter','Noto Sans SC',sans-serif;font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">图表</div>
+          <div id="imageList" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+
+        <!-- VE5 LLM 策略解读 -->
+        <div id="llmAnalysisArea" style="display:none;">
+          <div class="section-title">
+            <span class="icon" style="background:rgba(167,139,250,0.12);color:var(--accent-violet);">🤖</span>
+            VE5 策略有效性分析
+          </div>
+          <div class="llm-output">
+            <div class="llm-label">AI 解析</div>
+            <div id="llmAnalysisText">正在分析策略结果...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+</div>
+
+<!-- 数据源配置模态框 -->
+<div class="modal-overlay" id="dsModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="dsModalTitle">配置数据源</div>
+      <button class="modal-close" onclick="ve4_closeDsModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="dsModalKey">
+      <div class="modal-field">
+        <label class="modal-label">显示名称</label>
+        <input type="text" class="modal-input" id="dsModalName" placeholder="数据源名称">
+      </div>
+      <div class="modal-field" id="dsTokenField">
+        <label class="modal-label">API Token / 路径</label>
+        <input type="text" class="modal-input" id="dsModalToken" placeholder="输入 Token 或本地文件路径">
+      </div>
+      <div class="modal-field">
+        <label class="modal-toggle">
+          <input type="checkbox" id="dsModalEnabled">
+          <span>启用此数据源</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="ve4_closeDsModal()">取消</button>
+      <button class="btn btn-primary" onclick="ve4_saveDsConfig()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ─── VE5 Session Token ─── */
+let _ve5_token = '';
+(function extractToken() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('ve5_token');
+    if (t) {
+      _ve5_token = t;
+      const u = new URL(window.location.href);
+      u.searchParams.delete('ve5_token');
+      window.history.replaceState({}, '', u.pathname);
+      return;
+    }
+  } catch(e) {}
+  const m = document.cookie.match(/ve5_session_token=([^;]+)/);
+  if (m) _ve5_token = m[1];
+})();
+
+function ve5_fetch(url, options = {}) {
+  let tsUrl = url;
+  if (!url.includes('_t=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    tsUrl = url + sep + '_t=' + Date.now();
+  }
+  if (_ve5_token && tsUrl.startsWith('/')) {
+    options.headers = options.headers || {};
+    options.headers['x-ve5-token'] = _ve5_token;
+  }
+  return fetch(tsUrl, options);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Tab 切换
+// ─────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    // 切换到量化分析 Tab 时刷新历史策略列表
+    if (btn.dataset.tab === 'quantitative' && typeof ve4_loadStrategyHistory === 'function') {
+      ve4_loadStrategyHistory();
+    }
+    // 切换到基本面分析 Tab 时加载知识库
+    if (btn.dataset.tab === 'fundamental' && typeof ve4_loadKnowledgeBase === 'function') {
+      ve4_loadKnowledgeBase();
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────
+// 拖拽上传
+// ─────────────────────────────────────────────────────────────
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.pdf')) {
+    ve4_handlePdfFile(file);
+  } else {
+    ve4_showToast('仅支持 PDF 文件');
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// 基本面分析：URL 解析
+// ─────────────────────────────────────────────────────────────
+async function ve4_parseUrl() {
+  const url = document.getElementById('reportUrl').value.trim();
+  if (!url) { ve4_showToast('请输入 URL'); return; }
+
+  const btn = document.querySelector('#fundamentalTab button[onclick="ve4_parseUrl()"]');
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '解析中...'; }
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/parse-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (data.success) {
+      ve4_addKbItem(data);
+      ve4_showToast('解析成功');
+    } else {
+      ve4_showToast('解析失败: ' + (data.error || '未知错误'));
+    }
+  } catch (e) {
+    ve4_showToast('请求失败（请确保 API 服务已启动）');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '解析'; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 基本面分析：PDF 上传
+// ─────────────────────────────────────────────────────────────
+function ve4_uploadPdf(input) {
+  const file = input.files[0];
+  if (file) ve4_handlePdfFile(file);
+}
+
+async function ve4_handlePdfFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  // 找到上传按钮
+  const input = document.getElementById('pdfUpload');
+  const btn = input ? input.previousElementSibling || input.parentElement.querySelector('button') : null;
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '上传中...'; }
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/upload-pdf', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      ve4_addKbItem(data);
+      ve4_showToast('上传解析成功');
+    } else {
+      ve4_showToast('解析失败: ' + (data.error || '未知错误'));
+    }
+  } catch (e) {
+    ve4_showToast('请求失败（请确保 API 服务已启动）');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '上传PDF'; }
+    if (input) input.value = '';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 基本面分析：文本解析
+// ─────────────────────────────────────────────────────────────
+async function ve4_parseText() {
+  const text = document.getElementById('reportText').value.trim();
+  if (!text) { ve4_showToast('请输入或粘贴文本'); return; }
+
+  const btn = document.querySelector('#fundamentalTab button[onclick="ve4_parseText()"]');
+  if (btn && btn.disabled) return;
+  if (btn) { btn.disabled = true; btn.textContent = '解析中...'; }
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/parse-text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+    if (data.success) {
+      ve4_addKbItem(data);
+      document.getElementById('reportText').value = '';
+      ve4_showToast('解析成功');
+    } else {
+      ve4_showToast('解析失败: ' + (data.error || '未知错误'));
+    }
+  } catch (e) {
+    ve4_showToast('请求失败（请确保 API 服务已启动）');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '解析文本'; }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 知识库渲染
+// ─────────────────────────────────────────────────────────────
+function ve4_addKbItem(data) {
+  const listEl = document.getElementById('kbList');
+  // 清除 empty-state
+  const empty = listEl.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  const report = data.report || data;
+  const reportId = report.report_id || '';
+  const conf = report.confidence || 0.5;
+  const confLabel = conf >= 0.7 ? 'high' : conf >= 0.4 ? 'medium' : 'low';
+  const confText = conf >= 0.7 ? '高置信' : conf >= 0.4 ? '中置信' : '低置信';
+
+  const item = document.createElement('div');
+  item.className = 'kb-item';
+  item.dataset.reportId = reportId;
+  item.innerHTML = `
+    <div class="kb-header">
+      <div class="kb-title">${ve4_escapeHtml(report.title || '未命名研报')}</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span class="kb-tag kb-tag-${confLabel}">${confText}</span>
+        <button class="btn btn-secondary" style="font-size:10px;padding:2px 6px;"
+                onclick="event.stopPropagation();ve4_deleteKbItem('${reportId}',this)">删除</button>
+      </div>
+    </div>
+    <div class="kb-meta">
+      <span>来源: ${ve4_escapeHtml(report.source || '--')}</span>
+      <span>时间: ${report.time || '--'}</span>
+    </div>
+    <div class="kb-summary">${ve4_escapeHtml(report.summary || '')}</div>
+    <div class="kb-detail">
+      <div style="margin-bottom:10px;"><strong>投资逻辑：</strong>${ve4_escapeHtml(report.investment_thesis || report.thesis || '暂无')}</div>
+      <div style="margin-bottom:10px;"><strong>关键观点：</strong>${(report.viewpoints || report.key_points || []).map(v => ve4_escapeHtml(v)).join('；') || '暂无'}</div>
+      <div><strong>情绪倾向：</strong>${ve4_escapeHtml(report.sentiment || '--')}</div>
+    </div>
+  `;
+
+  item.addEventListener('click', () => {
+    const rid = item.dataset.reportId;
+    if (rid) {
+      ve4_loadKbDetail(rid, item);
+    } else {
+      item.classList.toggle('expanded');
+    }
+  });
+
+  listEl.prepend(item);
+
+  // 自动触发持仓影响评估
+  ve4_runHoldingsImpact(report);
+}
+
+async function ve4_deleteKbItem(reportId, btnEl) {
+  if (!reportId) return;
+  if (!confirm('确定从知识库删除这条研报？')) return;
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/knowledge/' + reportId, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      const item = btnEl.closest('.kb-item');
+      if (item) item.remove();
+      ve4_showToast('已删除');
+    }
+  } catch (e) {}
+}
+
+async function ve4_loadKnowledgeBase() {
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/knowledge?limit=20');
+    const data = await res.json();
+    if (data.success && data.reports && data.reports.length > 0) {
+      const listEl = document.getElementById('kbList');
+      const empty = listEl.querySelector('.empty-state');
+      if (empty) empty.remove();
+      data.reports.forEach(r => {
+        ve4_addKbItem({
+          report_id: r.report_id,
+          title: r.title,
+          source: r.source_url ? new URL(r.source_url).hostname : '本地',
+          time: r.parsed_at ? r.parsed_at.replace('T',' ').substring(0,16) : '--',
+          summary: '',
+          viewpoints: [],
+          sentiment: ''
+        });
+      });
+    }
+  } catch (e) {}
+}
+
+async function ve4_searchKnowledge() {
+  const query = document.getElementById('kbSearchInput').value.trim();
+  if (!query) return;
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, top_k: 10 })
+    });
+    const data = await res.json();
+    if (data.success && data.results && data.results.length > 0) {
+      const listEl = document.getElementById('kbList');
+      listEl.innerHTML = '';
+      // 按 report_id 分组
+      const grouped = {};
+      data.results.forEach(r => {
+        const rid = r.report_id;
+        if (!grouped[rid]) grouped[rid] = { title: r.title, source_url: r.source_url, items: [] };
+        grouped[rid].items.push(r);
+      });
+      Object.entries(grouped).forEach(([rid, g]) => {
+        const item = document.createElement('div');
+        item.className = 'kb-item';
+        item.innerHTML = `
+          <div class="kb-header">
+            <div class="kb-title">${ve4_escapeHtml(g.title || '未命名研报')}</div>
+            <span class="kb-tag kb-tag-medium">${g.items.length} 条相关</span>
+          </div>
+          <div class="kb-meta">
+            <span>来源: ${g.source_url ? new URL(g.source_url).hostname : '本地'}</span>
+          </div>
+          <div class="kb-detail">
+            ${g.items.map(it => `<div style="margin-bottom:8px;padding:8px;background:var(--bg-elevated);border-radius:6px;">
+              <div style="font-size:11px;color:var(--accent-cyan);margin-bottom:2px;">[${it.chunk_type}] 综合 ${(it.final_score||0).toFixed(2)} · 时效 ${(it.time_score||0).toFixed(2)}</div>
+              <div style="font-size:12px;">${ve4_escapeHtml(it.content.substring(0, 200))}${it.content.length>200?'...':''}</div>
+            </div>`).join('')}
+          </div>`;
+        item.addEventListener('click', () => item.classList.toggle('expanded'));
+        listEl.appendChild(item);
+      });
+    } else {
+      ve4_showToast('未找到相关结果');
+    }
+  } catch (e) {}
+}
+
+function ve4_togglePrivacyMode(el) {
+  const mode = el.checked ? 'allow_cloud' : 'local_only';
+  localStorage.setItem('ve4_holdings_privacy_mode', mode);
+  ve4_showToast(el.checked ? '已开启云端 AI 分析（持仓数据将发送至 AI 模型）' : '已切换为本地规则分析（保护隐私）');
+}
+
+// ─────────────────────────────────────────────────────────────
+// 研报详情动态加载（从 RAG 提取结构化数据）
+// ─────────────────────────────────────────────────────────────
+async function ve4_loadKbDetail(reportId, itemEl) {
+  if (!reportId) return;
+  // 如果已展开且有详情，收起即可
+  if (itemEl.classList.contains('expanded') && itemEl.dataset.loaded === 'true') {
+    itemEl.classList.remove('expanded');
+    return;
+  }
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/knowledge/' + reportId + '/detail');
+    const data = await res.json();
+    if (data.success && data.detail) {
+      const d = data.detail;
+      const detailEl = itemEl.querySelector('.kb-detail');
+      if (detailEl) {
+        detailEl.innerHTML = `
+          <div style="margin-bottom:10px;"><strong>摘要：</strong>${ve4_escapeHtml(d.summary || '暂无摘要')}</div>
+          <div style="margin-bottom:10px;"><strong>投资逻辑：</strong>${ve4_escapeHtml(d.thesis || '暂无')}</div>
+          <div style="margin-bottom:10px;"><strong>关键观点：</strong>${(d.key_points || []).map(v => ve4_escapeHtml(v)).join('<br>　· ') || '暂无'}</div>
+          <div style="margin-bottom:10px;"><strong>风险提示：</strong>${(d.risks || []).map(v => ve4_escapeHtml(v)).join('<br>　· ') || '暂无'}</div>
+          <div><strong>情绪倾向：</strong><span style="color:${d.sentiment==='看多'?'var(--accent-green)':d.sentiment==='看空'?'var(--accent-red)':'var(--text-muted)'}">${ve4_escapeHtml(d.sentiment)}</span></div>
+        `;
+        itemEl.dataset.loaded = 'true';
+        itemEl.classList.add('expanded');
+      }
+    }
+  } catch (e) {}
+}
+
+// ─────────────────────────────────────────────────────────────
+// 基本面 AI 对话
+// ─────────────────────────────────────────────────────────────
+let ve4_fundChatHistory = [];
+
+async function ve4_fundChatSend() {
+  const input = document.getElementById('fundChatInput');
+  const query = input.value.trim();
+  if (!query) return;
+  input.value = '';
+
+  const box = document.getElementById('fundChatBox');
+  // 清除占位
+  if (box.querySelector('.empty-state, div[style*="text-align:center"]')) {
+    box.innerHTML = '';
+  }
+
+  // 用户消息
+  box.innerHTML += `<div style="text-align:right;margin-bottom:10px;"><div style="display:inline-block;background:var(--accent-blue);color:#fff;padding:8px 14px;border-radius:12px 12px 2px 12px;font-size:13px;max-width:80%;">${ve4_escapeHtml(query)}</div></div>`;
+  box.scrollTop = box.scrollHeight;
+
+  // Loading
+  const loadingId = 'fundChatLoading_' + Date.now();
+  box.innerHTML += `<div id="${loadingId}" style="margin-bottom:10px;"><div style="display:inline-block;background:var(--bg-elevated);padding:8px 14px;border-radius:12px 12px 12px 2px;font-size:13px;color:var(--text-muted);">检索中...</div></div>`;
+  box.scrollTop = box.scrollHeight;
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, history: ve4_fundChatHistory })
+    });
+    const data = await res.json();
+
+    // 移除 loading
+    const ld = document.getElementById(loadingId);
+    if (ld) ld.remove();
+
+    if (data.success) {
+      const response = data.response || '';
+
+      // 检测是否包含策略建议
+      const strategyMatch = response.match(/===STRATEGY_SUGGESTION===\s*([\s\S]+)/);
+      let displayText = response;
+      let strategyText = '';
+      if (strategyMatch) {
+        displayText = response.replace(/===STRATEGY_SUGGESTION===[\s\S]*/, '').trim();
+        strategyText = strategyMatch[1].trim();
+      }
+
+      // 渲染 AI 回答
+      const escaped = ve4_escapeHtml(displayText).replace(/\n/g, '<br>');
+      const ragNote = data.llm_used ? '' : `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">检索到 ${data.rag_count} 条相关研报片段</div>`;
+      box.innerHTML += `<div style="margin-bottom:10px;"><div style="display:inline-block;background:var(--bg-elevated);padding:10px 14px;border-radius:12px 12px 12px 2px;font-size:13px;max-width:85%;line-height:1.6;">${escaped}${ragNote}</div></div>`;
+
+      // 如果有策略建议，渲染桥接按钮
+      if (strategyText) {
+        const bridgeId = 'bridge_' + Date.now();
+        box.innerHTML += `<div id="${bridgeId}" style="margin-bottom:12px;padding:10px 14px;border:1px solid var(--accent-purple);border-radius:10px;background:rgba(168,85,247,0.06);">
+          <div style="font-size:12px;color:var(--accent-purple);margin-bottom:6px;font-weight:600;">策略建议</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">${ve4_escapeHtml(strategyText)}</div>
+          <button class="btn btn-primary" style="font-size:12px;padding:6px 14px;" onclick="ve4_bridgeToQuantitative(this)" data-strategy="${ve4_escapeHtml(strategyText)}">跳转到量化分析并填充策略</button>
+        </div>`;
+      }
+
+      box.scrollTop = box.scrollHeight;
+
+      // 记录历史
+      ve4_fundChatHistory.push({ role: 'user', content: query });
+      ve4_fundChatHistory.push({ role: 'assistant', content: displayText });
+    } else {
+      box.innerHTML += `<div style="font-size:12px;color:var(--accent-red);margin-bottom:10px;">请求失败: ${ve4_escapeHtml(data.error || '未知错误')}</div>`;
+    }
+  } catch (e) {
+    const ld = document.getElementById(loadingId);
+    if (ld) ld.remove();
+    box.innerHTML += `<div style="font-size:12px;color:var(--accent-red);margin-bottom:10px;">网络错误</div>`;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 基本面 → 量化策略桥接
+// ─────────────────────────────────────────────────────────────
+function ve4_bridgeToQuantitative(btn) {
+  const strategy = btn.dataset.strategy || '';
+  if (!strategy) { ve4_showToast('无策略内容'); return; }
+
+  // 切换到量化分析 Tab
+  const quantBtn = document.querySelector('[data-tab="quantitative"]');
+  if (quantBtn) quantBtn.click();
+
+  // 填充到手动编辑策略文本框
+  setTimeout(() => {
+    const editor = document.getElementById('strategyCodeEditor');
+    if (editor) {
+      // 如果用的是 CodeMirror
+      if (editor.CodeMirror) {
+        editor.CodeMirror.setValue(strategy);
+      } else {
+        editor.value = strategy;
+      }
+      ve4_showToast('策略已填充到手动编辑器，可继续修改后执行');
+    }
+  }, 300);
+}
+
+// ─────────────────────────────────────────────────────────────
+// 持仓影响评估
+// ─────────────────────────────────────────────────────────────
+async function ve4_runHoldingsImpact(report) {
+  try {
+    const privacyMode = localStorage.getItem('ve4_holdings_privacy_mode') || 'local_only';
+    const res = await ve5_fetch('/api/v1/tactical/fundamental/holdings-impact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        report_title: report.title || '',
+        report_summary: report.summary || '',
+        report_sentiment: report.sentiment || '',
+        report_viewpoints: report.viewpoints || [],
+        privacy_mode: privacyMode,
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      ve4_renderImpactList(data.recommendations || [], data.privacy_notice || '');
+    }
+  } catch (e) {
+    console.error('持仓影响评估失败:', e);
+  }
+}
+
+function ve4_renderImpactList(recommendations, privacyNotice) {
+  const listEl = document.getElementById('impactList');
+  if (!recommendations || recommendations.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔗</div>
+        <div>暂无持仓影响评估</div>
+        ${privacyNotice ? `<div style="font-size:11px;color:var(--text-muted);margin-top:4px;">${ve4_escapeHtml(privacyNotice)}</div>` : ''}
+      </div>`;
+    return;
+  }
+
+  const noticeHtml = privacyNotice ?
+    `<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;padding:8px 12px;background:var(--bg-elevated);border-radius:8px;border:1px solid var(--border-subtle);">
+      ${ve4_escapeHtml(privacyNotice)}
+    </div>` : '';
+
+  listEl.innerHTML = noticeHtml + recommendations.map(r => {
+    const actionClass = r.action === 'buy' ? 'impact-buy' :
+                        r.action === 'sell' ? 'impact-sell' : 'impact-hold';
+    return `
+      <div class="impact-item">
+        <span class="impact-action ${actionClass}">${r.action_label || r.action}</span>
+        <div class="impact-name">${ve4_escapeHtml(r.holding_name)}</div>
+        <div class="impact-reason">${ve4_escapeHtml(r.reason)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────────────────────
+// 数据源管理（可配置）
+// ─────────────────────────────────────────────────────────────
+let _dsSources = [];
+
+async function ve4_loadDataSources() {
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/datasources');
+    const data = await res.json();
+    if (data.sources) {
+      _dsSources = data.sources;
+      ve4_renderDataSources(data.sources);
+    }
+  } catch (e) {
+    // 静默失败
+  }
+}
+
+function ve4_renderDataSources(sources) {
+  const grid = document.getElementById('dsGrid');
+  if (!sources || sources.length === 0) {
+    grid.innerHTML = '<div class="empty-state" style="padding:24px;">暂无数据源配置</div>';
+    return;
+  }
+  grid.innerHTML = sources.map(s => `
+    <div class="ds-card">
+      <div class="ds-dot ${s.enabled ? 'on' : 'off'}"></div>
+      <div class="ds-info">
+        <div class="ds-name">${s.name}</div>
+        <div class="ds-status">${s.status || (s.enabled ? '已启用' : '未启用')}</div>
+      </div>
+      <button class="ds-config-btn" onclick="ve4_openDsModal('${s.key}')">配置</button>
+    </div>
+  `).join('');
+}
+
+function ve4_openDsModal(key) {
+  const src = _dsSources.find(s => s.key === key);
+  if (!src) return;
+  document.getElementById('dsModalKey').value = key;
+  document.getElementById('dsModalTitle').textContent = '配置: ' + src.name;
+  document.getElementById('dsModalName').value = src.name || '';
+  document.getElementById('dsModalToken').value = src.token || src.path || '';
+  document.getElementById('dsModalEnabled').checked = !!src.enabled;
+  // 本地数据源显示路径，其他显示 token
+  const isLocal = key === 'local_file';
+  const isOther = key === 'other';
+  if (isOther) {
+    document.querySelector('#dsTokenField .modal-label').textContent = '数据源地址 / API';
+    document.getElementById('dsModalToken').placeholder = '输入自定义数据源的 URL、路径或 API 地址';
+  } else if (isLocal) {
+    document.querySelector('#dsTokenField .modal-label').textContent = '本地文件路径';
+    document.getElementById('dsModalToken').placeholder = '输入 CSV/Excel 文件路径';
+  } else {
+    document.querySelector('#dsTokenField .modal-label').textContent = 'API Token';
+    document.getElementById('dsModalToken').placeholder = '输入 API Token';
+  }
+  document.getElementById('dsModal').classList.add('active');
+}
+
+function ve4_closeDsModal() {
+  document.getElementById('dsModal').classList.remove('active');
+}
+
+async function ve4_saveDsConfig() {
+  const key = document.getElementById('dsModalKey').value;
+  const name = document.getElementById('dsModalName').value.trim();
+  const token = document.getElementById('dsModalToken').value.trim();
+  const enabled = document.getElementById('dsModalEnabled').checked;
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/datasources/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, name, token, enabled })
+    });
+    const data = await res.json();
+    if (data.success) {
+      ve4_showToast('配置已保存');
+      ve4_closeDsModal();
+      ve4_loadDataSources();
+    } else {
+      ve4_showToast('保存失败: ' + (data.error || '未知错误'));
+    }
+  } catch (e) {
+    ve4_showToast('请求失败');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 本地数据加载
+// ─────────────────────────────────────────────────────────────
+async function ve4_loadLocalData() {
+  const path = document.getElementById('localDataPath').value.trim();
+  if (!path) { ve4_showToast('请输入本地数据文件路径'); return; }
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/quantitative/load-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    });
+    const data = await res.json();
+    if (data.success) {
+      ve4_showToast('数据加载成功: ' + (data.info || ''));
+    } else {
+      ve4_showToast('加载失败: ' + (data.error || '未知错误'));
+    }
+  } catch (e) {
+    ve4_showToast('请求失败（请确保 API 服务已启动）');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 策略模式切换：手动编辑 / AI 辅助
+// ─────────────────────────────────────────────────────────────
+function ve4_setStrategyMode(mode) {
+  document.querySelectorAll('.ai-mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('aiAssistPanel').style.display = mode === 'ai' ? 'block' : 'none';
+  document.getElementById('aiHint').style.display = mode === 'ai' ? 'block' : 'none';
+  document.getElementById('mode' + (mode === 'ai' ? 'AI' : 'Manual')).classList.add('active');
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI 辅助策略（完善策略描述）
+// ─────────────────────────────────────────────────────────────
+async function ve4_assistStrategy() {
+  const idea = document.getElementById('investIdea').value.trim();
+  if (!idea) { ve4_showToast('请输入你的投资思路'); return; }
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/quantitative/assist-strategy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idea })
+    });
+    const data = await res.json();
+    if (data.success && data.strategy) {
+      document.getElementById('strategyDesc').value = data.strategy;
+      ve4_setStrategyMode('manual');
+      ve4_showToast('策略已完善，请在手动模式下查看和编辑');
+    } else {
+      ve4_showToast('完善失败: ' + (data.error || '未知错误'));
+    }
+  } catch (e) {
+    ve4_showToast('请求失败');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI Coding 应用配置
+// ─────────────────────────────────────────────────────────────
+let _apps = [];
+
+async function ve4_loadApps() {
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/apps');
+    const data = await res.json();
+    if (data.apps) {
+      _apps = data.apps;
+      ve4_renderApps(data.apps);
+    }
+  } catch (e) {}
+}
+
+function ve4_renderApps(apps) {
+  const list = document.getElementById('appList');
+  if (!apps || apps.length === 0) { list.innerHTML = '<div class="empty-state" style="padding:12px;">暂无应用</div>'; return; }
+  list.innerHTML = apps.map(a => {
+    const statusIcon = a.detected ? '✅' : a.enabled ? '⚠️' : '⬜';
+    const statusText = a.detected ? '已检测到' : (a.enabled ? '路径无效' : '未配置');
+    const isOther = a.key === 'other';
+    const placeholder = isOther
+      ? '输入自定义 AI 编程应用的可执行文件路径（如 D:\\Tools\\MyIDE\\MyIDE.exe）'
+      : `${a.name} 安装路径（如 C:\\Users\\xxx\\AppData\\Local\\Programs\\Trae\\Trae.exe）`;
+    return `
+      <div class="mcp-step" style="flex-direction:column;align-items:stretch;gap:8px;">
+        <div style="display:flex;align-items:center;cursor:pointer;" onclick="ve4_selectApp('${a.key}')">
+          <span class="mcp-step-num" style="${a.enabled ? 'background:rgba(99,102,241,0.3);' : ''}">${a.enabled ? '✓' : ''}</span>
+          <div style="flex:1;">
+            <div style="font-weight:600;color:var(--text-primary);">${a.name}</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${statusIcon} ${statusText}${a.detected ? ' — ' + a.path : ''}${isOther && !a.detected ? ' — 请手动输入应用路径' : ''}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;padding-left:30px;">
+          <input type="text" class="modal-input" id="appPath_${a.key}"
+                 style="flex:1;padding:8px 10px;font-size:12px;"
+                 value="${a.detected ? a.path : a.path || ''}"
+                 placeholder="${placeholder}">
+          <button class="btn btn-secondary" style="font-size:10px;padding:6px 10px;white-space:nowrap;"
+                  onclick="ve4_browseAppPath('${a.key}')">浏览</button>
+          <button class="btn btn-primary" style="font-size:10px;padding:6px 10px;white-space:nowrap;"
+                  onclick="ve4_saveAppPath('${a.key}')">保存</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function ve4_selectApp(key) {
+  ve5_fetch('/api/v1/tactical/apps/set-default', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key })
+  }).then(r => r.json()).then(d => {
+    if (d.success) { ve4_loadApps(); ve4_showToast('已设置: ' + key); }
+  }).catch(() => {});
+}
+
+function ve4_toggleAppGuide() {
+  const g = document.getElementById('appConfigGuide');
+  if (g.style.display === 'none') { ve4_loadApps(); ve4_loadWsDir(); g.style.display = 'block'; }
+  else { g.style.display = 'none'; }
+}
+
+function ve4_closeAppGuide() { document.getElementById('appConfigGuide').style.display = 'none'; }
+
+// ── 浏览文件选择 ──
+
+function ve4_browseAppPath(appKey) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  // Windows exe 选择器没有官方方式，用 accept 限制
+  input.accept = '.exe,.app,.bat,.cmd';
+  input.onchange = (e) => {
+    // file input 只返回文件名，不能返回完整路径（浏览器安全限制）
+    // 所以用 window.showDirectoryPicker / window.showOpenFilePicker
+    ve4_nativeFilePicker('exe', (path) => {
+      if (path) {
+        document.getElementById('appPath_' + appKey).value = path;
+      }
+    });
+  };
+  input.click();
+}
+
+function ve4_nativeFilePicker(filter, callback) {
+  // 尝试使用 File System Access API（Chrome 86+）或回退提示
+  if (window.showOpenFilePicker) {
+    window.showOpenFilePicker({
+      types: [{ description: '可执行文件', accept: { 'application/octet-stream': ['.exe'] } }]
+    }).then(handle => {
+      // 无法获取完整路径，只能获取文件名
+      // 回退提示用户手动粘贴
+    }).catch(() => {});
+    // File System Access API 不返回完整路径，统一提示
+    alert('由于浏览器安全限制，无法通过文件选择器获取完整路径。\n\n请手动粘贴应用路径，或参考以下方式查找：\n\n1. 右键桌面快捷方式 → 属性 → 查看「目标」栏\n2. 开始菜单搜索应用名 → 右键 → 打开文件位置');
+  } else {
+    alert('由于浏览器安全限制，无法通过文件选择器获取完整路径。\n\n请手动粘贴应用路径，或参考以下方式查找：\n\n1. 右键桌面快捷方式 → 属性 → 查看「目标」栏\n2. 开始菜单搜索应用名 → 右键 → 打开文件位置');
+  }
+}
+
+async function ve4_saveAppPath(appKey) {
+  const pathEl = document.getElementById('appPath_' + appKey);
+  const path = pathEl ? pathEl.value.trim() : '';
+  if (!path) { ve4_showToast('请输入应用路径'); return; }
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/apps/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: appKey, path })
+    });
+    const data = await res.json();
+    if (data.success) {
+      ve4_showToast('路径已保存');
+      // 同时设为默认应用
+      const res2 = await ve5_fetch('/api/v1/tactical/apps/set-default', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: appKey })
+      });
+      ve4_loadApps();
+    } else {
+      ve4_showToast('保存失败');
+    }
+  } catch (e) {
+    ve4_showToast('请求失败');
+  }
+}
+
+// ── 工作目录 ──
+
+async function ve4_loadWsDir() {
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/workspace-dir');
+    const data = await res.json();
+    if (data.dir) {
+      document.getElementById('wsDirInput').value = data.dir;
+    }
+  } catch (e) {}
+}
+
+function ve4_browseWsDir() {
+  // 浏览器无法原生选择文件夹，提示手动输入
+  alert('由于浏览器安全限制，无法使用文件夹选择器。\n\n请手动输入工作目录路径。\n默认路径: ve4/tactical/（即 ' + 'D:\\TRAE_SOLO_download\\ve3\\ve4\\tactical' + '）');
+}
+
+async function ve4_saveWsDir() {
+  const dir = document.getElementById('wsDirInput').value.trim();
+  if (!dir) { ve4_showToast('请输入工作目录路径'); return; }
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/workspace-dir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dir })
+    });
+    const data = await res.json();
+    ve4_showToast(data.success ? '工作目录已保存' : '保存失败');
+  } catch (e) {
+    ve4_showToast('请求失败');
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 实现策略：生成任务文件 → 启动 AI Coding 应用
+// ─────────────────────────────────────────────────────────────
+async function ve4_launchTask() {
+  const strategy = document.getElementById('strategyDesc').value.trim();
+  if (!strategy) { ve4_showToast('请先描述你的策略'); return; }
+
+  document.getElementById('resultStatusText').textContent = '正在处理...';
+
+  // 创建策略会话
+  let sessionId = '';
+  try {
+    const sessRes = await ve5_fetch('/api/v1/tactical/strategy-sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strategy })
+    });
+    const sessData = await sessRes.json();
+    if (sessData.success) {
+      sessionId = sessData.session_id;
+      window.ve4CurrentSessionId = sessionId;
+    }
+  } catch (e) {}
+
+  try {
+    // 先尝试启动 AI Coding 应用
+    const res = await ve5_fetch('/api/v1/tactical/launch-task', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strategy })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      // 应用已启动
+      const appName = data.app_name || 'AI 应用';
+      const isClaude = data.is_claude;
+      document.getElementById('resultStatusText').innerHTML =
+        `${appName} 已启动${isClaude ? '，策略已复制到剪贴板' : ''}<br>` +
+        `<span style="font-size:11px;color:var(--text-muted);">工作目录: ${data.workspace_dir || '--'}</span><br>` +
+        `<span style="font-size:11px;color:var(--text-muted);">请在 AI 应用中完成策略代码，然后回到此处点击「读取结果」</span>`;
+      ve4_showToast(appName + ' 已启动');
+      ve4_loadStrategyHistory(); // 刷新历史列表
+      return;
+    }
+
+    // 启动失败：判断是否因为未配置应用
+    const err = data.error || '';
+    if (err.includes('未配置') || err.includes('AI 编程应用')) {
+      // Fallback: AI 扩写
+      document.getElementById('resultStatusText').textContent = '未配置 AI 编程应用，正在 AI 扩写策略...';
+      await ve4_expandStrategy(strategy, sessionId);
+      return;
+    }
+
+    // 其它错误
+    document.getElementById('resultStatusText').textContent = '启动失败: ' + err;
+    ve4_showToast(err);
+    if (err.includes('未找到') || err.includes('路径不存在')) {
+      ve4_toggleAppGuide();
+    }
+  } catch (e) {
+    document.getElementById('resultStatusText').textContent = '请求失败（请确保 API 服务已启动）';
+  }
+}
+
+// ── AI 扩写策略（fallback） ──
+async function ve4_expandStrategy(strategy, existingSessionId) {
+  // 如果没有传入 sessionId，创建一个新的
+  let sessionId = existingSessionId;
+  if (!sessionId) {
+    try {
+      const sessRes = await ve5_fetch('/api/v1/tactical/strategy-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ strategy })
+      });
+      const sessData = await sessRes.json();
+      if (sessData.success) {
+        sessionId = sessData.session_id;
+        window.ve4CurrentSessionId = sessionId;
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/expand-strategy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ strategy })
+    });
+    const data = await res.json();
+    if (data.success && data.expanded) {
+      // 将扩写结果填入策略描述框
+      document.getElementById('strategyDesc').value = data.expanded;
+      // 复制到剪贴板
+      navigator.clipboard.writeText(data.expanded).then(() => {
+        ve4_showToast('策略已扩写并复制到剪贴板，可粘贴到 AI Coding 应用');
+      }).catch(() => {
+        ve4_showToast('策略已扩写，请手动复制');
+      });
+      document.getElementById('resultStatusText').innerHTML =
+        `✅ 策略已 AI 扩写<br>` +
+        `<span style="font-size:11px;color:var(--text-muted);">扩写后的策略已填入编辑框并复制到剪贴板</span><br>` +
+        `<span style="font-size:11px;color:var(--text-muted);">请粘贴到 Trae / Cursor / VS Code 等 AI Coding 应用中执行</span>`;
+      ve4_loadStrategyHistory(); // 刷新历史列表
+    } else {
+      document.getElementById('resultStatusText').textContent = '扩写失败: ' + (data.error || '未知错误');
+    }
+  } catch (e) {
+    document.getElementById('resultStatusText').textContent = '扩写请求失败';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 读取结果：扫描工作区输出目录 → 始终弹窗显示
+// ─────────────────────────────────────────────────────────────
+async function ve4_readResults() {
+  document.getElementById('resultStatusText').textContent = '正在读取结果...';
+
+  // 确保有 sessionId
+  let sessionId = window.ve4CurrentSessionId;
+  if (!sessionId) {
+    // 如果没有当前会话，尝试获取最近的会话
+    try {
+      const listRes = await ve5_fetch('/api/v1/tactical/strategy-sessions?limit=1');
+      const listData = await listRes.json();
+      if (listData.success && listData.sessions && listData.sessions.length > 0) {
+        sessionId = listData.sessions[0].session_id;
+        window.ve4CurrentSessionId = sessionId;
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/read-results');
+    const data = await res.json();
+
+    if (!data.exists) {
+      document.getElementById('resultStatusText').textContent = '输出目录不存在，请先在 AI 应用中运行策略';
+      // 即使没有结果也弹窗显示（可能已有历史策略）
+      if (sessionId) {
+        ve4_openStrategyDetail(sessionId, null);
+      }
+      return;
+    }
+
+    let hasResults = false;
+
+    // 文本结果
+    if (data.text_result) {
+      document.getElementById('textResult').textContent = data.text_result;
+      document.getElementById('textResultArea').style.display = 'block';
+      hasResults = true;
+    } else {
+      document.getElementById('textResultArea').style.display = 'none';
+    }
+
+    // CSV 预览
+    if (data.csv_preview) {
+      document.getElementById('csvPreview').textContent = data.csv_preview + (data.csv_rows > 20 ? `\n...共 ${data.csv_rows} 行` : '');
+      document.getElementById('csvResultArea').style.display = 'block';
+      hasResults = true;
+    } else {
+      document.getElementById('csvResultArea').style.display = 'none';
+    }
+
+    // 图片结果（动态加载，加时间戳防缓存）
+    if (data.images && data.images.length > 0) {
+      const ts = Date.now();
+      document.getElementById('imageList').innerHTML = data.images.map(img => {
+        const imgPath = img.path.replace(/\\/g, '/');
+        const sep = imgPath.includes('?') ? '&' : '?';
+        return `<img src="${imgPath}${sep}_t=${ts}" style="max-width:100%;border-radius:8px;border:1px solid var(--border-subtle);" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" /><div style="display:none;font-size:12px;color:var(--text-muted);padding:8px;background:var(--bg-elevated);border-radius:8px;">${img.name} (${(img.size/1024).toFixed(1)}KB)</div>`;
+      }).join('');
+      document.getElementById('imageResultArea').style.display = 'block';
+      hasResults = true;
+    } else {
+      document.getElementById('imageResultArea').style.display = 'none';
+    }
+
+    if (hasResults) {
+      const modTime = data.last_modified || '--';
+      document.getElementById('resultStatusText').innerHTML =
+        `结果已读取（更新时间: ${modTime}）`;
+      // 自动触发 LLM 分析
+      await ve4_analyzeResults(data);
+    } else {
+      document.getElementById('resultStatusText').textContent = '暂无结果文件。请在 AI 应用中运行策略并保存结果到 output/ 目录';
+    }
+
+    // 始终弹窗（无论是否有 sessionId）
+    if (sessionId) {
+      ve4_openStrategyDetail(sessionId, data);
+    }
+
+    // 将结果（含 LLM 分析）保存到会话
+    if (sessionId && hasResults) {
+      try {
+        const llmText = document.getElementById('llmAnalysisText').textContent || '';
+        await ve5_fetch('/api/v1/tactical/strategy-sessions/' + sessionId + '/save-result', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text_result: data.text_result || '',
+            csv_result: data.csv_preview || '',
+            images: data.images || [],
+            llm_analysis: llmText
+          })
+        });
+      } catch (e) {}
+    }
+  } catch (e) {
+    document.getElementById('resultStatusText').textContent = '读取失败';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// VE4 LLM 策略有效性分析
+// ─────────────────────────────────────────────────────────────
+async function ve4_analyzeResults(results) {
+  const area = document.getElementById('llmAnalysisArea');
+  const textEl = document.getElementById('llmAnalysisText');
+  area.style.display = 'block';
+  textEl.textContent = '正在分析策略有效性...';
+
+  const payload = { ...results };
+  if (window.ve4CurrentSessionId) {
+    payload.session_id = window.ve4CurrentSessionId;
+  }
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/analyze-results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.success && data.analysis) {
+      textEl.textContent = data.analysis;
+    } else {
+      textEl.textContent = data.error || '分析功能待接入 LLM';
+    }
+  } catch (e) {
+    textEl.textContent = '分析功能待接入 LLM';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 清空结果
+// ─────────────────────────────────────────────────────────────
+async function ve4_clearResults() {
+  try {
+    const sessionId = window.ve4CurrentSessionId || '';
+    const res = await ve5_fetch('/api/v1/tactical/clear-results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('textResultArea').style.display = 'none';
+      document.getElementById('csvResultArea').style.display = 'none';
+      document.getElementById('imageResultArea').style.display = 'none';
+      document.getElementById('llmAnalysisArea').style.display = 'none';
+      document.getElementById('resultStatusText').textContent = '结果已清空';
+      ve4_loadStrategyHistory(); // 刷新历史列表状态
+      ve4_showToast('已清空当前策略结果');
+    }
+  } catch (e) {}
+}
+
+// ─────────────────────────────────────────────────────────────
+// 页面初始化
+// ─────────────────────────────────────────────────────────────
+ve4_loadDataSources();
+
+// 加载隐私模式设置
+(function initPrivacyMode() {
+  const mode = localStorage.getItem('ve4_holdings_privacy_mode') || 'local_only';
+  const el = document.getElementById('privacyModeToggle');
+  if (el) el.checked = (mode === 'allow_cloud');
+})();
+
+// 加载知识库（基本面 Tab 默认激活）
+setTimeout(() => { ve4_loadKnowledgeBase(); }, 300);
+ve4_loadApps();
+// 延迟加载历史策略列表（确保页面和 API 就绪）
+setTimeout(() => { ve4_loadStrategyHistory(); }, 500);
+
+// ─────────────────────────────────────────────────────────────
+// 工具函数
+// ─────────────────────────────────────────────────────────────
+function ve4_escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Toast 提示
+// ─────────────────────────────────────────────────────────────
+function ve4_showToast(msg) {
+  let toast = document.getElementById('ve4Toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 've4Toast';
+    Object.assign(toast.style, {
+      position: 'fixed', bottom: '24px', right: '24px',
+      padding: '12px 20px', borderRadius: '10px',
+      background: 'var(--bg-elevated)', color: 'var(--text-primary)',
+      border: '1px solid var(--border-active)',
+      fontSize: '13px', fontFamily: 'inherit',
+      boxShadow: 'var(--shadow-elevated)', zIndex: '9999',
+      opacity: '0', transform: 'translateY(8px)',
+      transition: 'all 0.3s'
+    });
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(8px)';
+  }, 3000);
+}
+
+// ─────────────────────────────────────────────────────────────
+// 页面初始化
+// ─────────────────────────────────────────────────────────────
+ve4_loadDataSources();
+
+// ── 策略详情弹窗 ──
+function ve4_openStrategyDetail(sessionId, resultData) {
+  window.ve4CurrentSessionId = sessionId;
+  const modal = document.getElementById('strategyDetailModal');
+  const titleEl = document.getElementById('strategyDetailTitle');
+  const metaEl = document.getElementById('strategyDetailMeta');
+  const strategyEl = document.getElementById('strategyDetailStrategy');
+  const resultEl = document.getElementById('strategyDetailResult');
+  const csvEl = document.getElementById('strategyDetailCsv');
+  const imagesEl = document.getElementById('strategyDetailImages');
+  const llmEl = document.getElementById('strategyDetailLLM');
+  const chatEl = document.getElementById('strategyDetailChat');
+
+  // 获取会话详情
+  ve5_fetch('/api/v1/tactical/strategy-sessions/' + sessionId)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success && data.session) {
+        const s = data.session;
+        titleEl.textContent = '策略分析详情';
+        metaEl.textContent = '会话 ID: ' + s.session_id + ' | 状态: ' + (s.status === 'completed' ? '已完成' : '进行中');
+        strategyEl.textContent = s.strategy_text || '无策略描述';
+
+        // 结果
+        if (resultData && resultData.text_result) {
+          resultEl.textContent = resultData.text_result;
+          document.getElementById('strategyDetailResultSection').style.display = 'block';
+        } else {
+          document.getElementById('strategyDetailResultSection').style.display = 'none';
+        }
+
+        // CSV
+        if (resultData && resultData.csv_preview) {
+          csvEl.textContent = resultData.csv_preview + (resultData.csv_rows > 20 ? '\n...共 ' + resultData.csv_rows + ' 行' : '');
+          document.getElementById('strategyDetailCsvSection').style.display = 'block';
+        } else {
+          document.getElementById('strategyDetailCsvSection').style.display = 'none';
+        }
+
+        // 图片（动态加载，加时间戳防缓存）
+        if (resultData && resultData.images && resultData.images.length > 0) {
+          const ts = Date.now();
+          imagesEl.innerHTML = resultData.images.map(img => {
+            const localPath = img.path.replace(/\\/g, '/');
+            const sep = localPath.includes('?') ? '&' : '?';
+            return `
+              <div class="strategy-detail-image" onclick="ve4_openImageLightbox('${localPath}${sep}_t=${ts}')">
+                <img src="${localPath}${sep}_t=${ts}" alt="${img.name}" onerror="this.style.display='none'">
+                <div class="strategy-detail-image-name">${img.name}</div>
+              </div>`;
+          }).join('');
+          document.getElementById('strategyDetailImagesSection').style.display = 'block';
+        } else {
+          document.getElementById('strategyDetailImagesSection').style.display = 'none';
+        }
+
+        // LLM 分析
+        const llmText = document.getElementById('llmAnalysisText').textContent;
+        if (llmText && llmText !== '正在分析策略有效性...' && llmText !== '分析功能待接入 LLM') {
+          llmEl.textContent = llmText;
+          document.getElementById('strategyDetailLLMSection').style.display = 'block';
+        } else {
+          document.getElementById('strategyDetailLLMSection').style.display = 'none';
+        }
+
+        // 对话历史
+        if (s.chat_history && s.chat_history.length > 0) {
+          chatEl.innerHTML = s.chat_history.map(c => `
+            <div class="strategy-detail-chat-msg ${c.role}">
+              <div class="strategy-detail-chat-avatar">${c.role === 'user' ? 'U' : 'AI'}</div>
+              <div class="strategy-detail-chat-bubble">${c.content}</div>
+            </div>
+          `).join('');
+        } else {
+          chatEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px;">暂无对话，请在下方输入框开始沟通</div>';
+        }
+      }
+    })
+    .catch(() => {
+      titleEl.textContent = '策略分析详情';
+      metaEl.textContent = '会话 ID: ' + sessionId;
+      strategyEl.textContent = '加载失败';
+    });
+
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function ve4_closeStrategyDetail() {
+  const modal = document.getElementById('strategyDetailModal');
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+async function ve4_sendChatMessage() {
+  const input = document.getElementById('strategyChatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const sessionId = window.ve4CurrentSessionId;
+  if (!sessionId) { ve4_showToast('未找到策略会话'); return; }
+
+  // 添加用户消息到界面
+  const chatEl = document.getElementById('strategyDetailChat');
+  const userDiv = document.createElement('div');
+  userDiv.className = 'strategy-detail-chat-msg user';
+  userDiv.innerHTML = '<div class="strategy-detail-chat-avatar">U</div><div class="strategy-detail-chat-bubble">' + msg + '</div>';
+  chatEl.appendChild(userDiv);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  input.value = '';
+
+  // 发送请求
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/strategy-sessions/' + sessionId + '/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const aiDiv = document.createElement('div');
+      aiDiv.className = 'strategy-detail-chat-msg assistant';
+      aiDiv.innerHTML = '<div class="strategy-detail-chat-avatar">AI</div><div class="strategy-detail-chat-bubble">' + data.reply + '</div>';
+      chatEl.appendChild(aiDiv);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    } else {
+      ve4_showToast(data.error || '发送失败');
+    }
+  } catch (e) {
+    ve4_showToast('请求失败');
+  }
+}
+
+// ESC 关闭弹窗
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    ve4_closeStrategyDetail();
+    ve4_closeImageLightbox();
+  }
+});
+
+// ── 加载策略历史列表（主页面） ──
+async function ve4_loadStrategyHistory() {
+  const listEl = document.getElementById('mainStrategyHistoryList');
+  const sectionEl = document.getElementById('mainStrategyHistorySection');
+  if (!listEl || !sectionEl) return;
+
+  // 先显示加载状态
+  listEl.innerHTML = '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:16px;">加载中...</div>';
+  sectionEl.style.display = 'block';
+
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/strategy-sessions?limit=20');
+    const data = await res.json();
+
+    if (data.success && data.sessions && data.sessions.length > 0) {
+      listEl.innerHTML = data.sessions.map(s => {
+        const date = s.created_at ? s.created_at.replace('T', ' ').substring(0, 16) : '--';
+        const status = s.status === 'completed' ? '✅' : '🔄';
+        const brief = (s.strategy_text || '').substring(0, 50).replace(/\n/g, ' ');
+        const isActive = s.session_id === window.ve4CurrentSessionId;
+        return `
+          <div class="strategy-history-item ${isActive ? 'active' : ''}"
+               onclick="ve4_selectStrategySession('${s.session_id}', this)">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:14px;">${status}</span>
+              <span style="font-size:13px;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ve4_escapeHtml(brief)}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;padding-left:22px;">${date}</div>
+          </div>`;
+      }).join('');
+      sectionEl.style.display = 'block';
+    } else {
+      sectionEl.style.display = 'none';
+    }
+  } catch (e) {
+    console.error('[VE4] ve4_loadStrategyHistory error:', e);
+    sectionEl.style.display = 'none';
+  }
+}
+
+async function ve4_selectStrategySession(sessionId, clickedEl) {
+  window.ve4CurrentSessionId = sessionId;
+  // 高亮选中项
+  document.querySelectorAll('.strategy-history-item').forEach(el => el.classList.remove('active'));
+  if (clickedEl) clickedEl.classList.add('active');
+  // 加载该会话的详情（弹窗显示）
+  try {
+    const res = await ve5_fetch('/api/v1/tactical/strategy-sessions/' + sessionId);
+    const data = await res.json();
+    if (data.success && data.session) {
+      const s = data.session;
+      const savedResult = s.result;
+      const resultData = savedResult ? {
+        text_result: savedResult.text_result,
+        csv_preview: savedResult.csv_result,
+        csv_rows: savedResult.csv_result ? savedResult.csv_result.split('\n').length : 0,
+        images: savedResult.images || [],
+        last_modified: '--'
+      } : null;
+      ve4_openStrategyDetail(sessionId, resultData);
+    }
+  } catch (e) {}
+}
+
+// ── 图片 Lightbox ──
+function ve4_openImageLightbox(src) {
+  const box = document.getElementById('imgLightbox');
+  const img = document.getElementById('imgLightboxImg');
+  img.src = src;
+  box.classList.add('active');
+}
+
+function ve4_closeImageLightbox() {
+  const box = document.getElementById('imgLightbox');
+  box.classList.remove('active');
+  setTimeout(() => { document.getElementById('imgLightboxImg').src = ''; }, 300);
+}
+
+window.addEventListener('load', () => {
+  // ─── 全局防缓存：拦截所有页面内 <a> 跳转，自动附加时间戳 ───
+  document.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && href.endsWith('.html') && !href.includes('_t=')) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const sep = href.includes('?') ? '&' : '?';
+        window.location.href = href + sep + '_t=' + Date.now();
+      });
+    }
+  });
+});
+
+// ── 导航辅助函数 ──
+function goToAccountOverview() {
+  const token = new URLSearchParams(window.location.search).get('ve5_token');
+  window.location.href = '/pwa/account-overview.html' + (token ? '?ve5_token=' + token : '');
+}
+function goToDataflowStatus() {
+  const token = new URLSearchParams(window.location.search).get('ve5_token');
+  window.location.href = '/pwa/dataflow-status.html' + (token ? '?ve5_token=' + token : '');
+}
+</script>
+
+<!-- 图片 Lightbox -->
+<div class="img-lightbox" id="imgLightbox" onclick="ve4_closeImageLightbox()">
+  <button class="img-lightbox-close" onclick="event.stopPropagation(); ve4_closeImageLightbox();">&times;</button>
+  <div class="img-lightbox-inner" onclick="event.stopPropagation()">
+    <img id="imgLightboxImg" src="" alt="" onerror="this.style.display='none'; this.parentElement.innerHTML += '<div style=\"color:var(--text-muted);text-align:center;padding:20px;\">图片加载失败</div>'" onload="this.style.display='block';">
+  </div>
+</div>
+
+<!-- 策略详情弹窗 -->
+<div class="strategy-detail-modal" id="strategyDetailModal" onclick="ve4_closeStrategyDetail()">
+  <div class="strategy-detail-panel" onclick="event.stopPropagation()">
+    <div class="strategy-detail-header">
+      <div>
+        <h3 id="strategyDetailTitle">策略分析详情</h3>
+        <div class="strategy-detail-meta" id="strategyDetailMeta">--</div>
+      </div>
+      <button class="strategy-detail-close" onclick="ve4_closeStrategyDetail()">&times;</button>
+    </div>
+    <div class="strategy-detail-body">
+      <!-- 策略描述 -->
+      <div class="strategy-detail-section">
+        <div class="strategy-detail-section-title">策略含义与参数</div>
+        <div class="strategy-detail-strategy" id="strategyDetailStrategy">--</div>
+      </div>
+      <!-- 文本结果 -->
+      <div class="strategy-detail-section" id="strategyDetailResultSection" style="display:none;">
+        <div class="strategy-detail-section-title">分析结果</div>
+        <div class="strategy-detail-result" id="strategyDetailResult">--</div>
+      </div>
+      <!-- CSV -->
+      <div class="strategy-detail-section" id="strategyDetailCsvSection" style="display:none;">
+        <div class="strategy-detail-section-title">数据表格</div>
+        <pre class="strategy-detail-result" id="strategyDetailCsv" style="font-family:var(--mono);font-size:12px;">--</pre>
+      </div>
+      <!-- 图片 -->
+      <div class="strategy-detail-section" id="strategyDetailImagesSection" style="display:none;">
+        <div class="strategy-detail-section-title">程序输出图表</div>
+        <div class="strategy-detail-images" id="strategyDetailImages"></div>
+      </div>
+      <!-- LLM 分析 -->
+      <div class="strategy-detail-section" id="strategyDetailLLMSection" style="display:none;">
+        <div class="strategy-detail-section-title">大模型分析</div>
+        <div class="strategy-detail-llm" id="strategyDetailLLM">--</div>
+      </div>
+      <!-- 对话 -->
+      <div class="strategy-detail-section">
+        <div class="strategy-detail-section-title">继续沟通</div>
+        <div class="strategy-detail-chat" id="strategyDetailChat"></div>
+        <div class="strategy-detail-chat-input-area">
+          <input type="text" class="strategy-detail-chat-input" id="strategyChatInput"
+                 placeholder="输入你的问题或指令..."
+                 onkeydown="if(event.key==='Enter')ve4_sendChatMessage()">
+          <button class="strategy-detail-chat-send" onclick="ve4_sendChatMessage()">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

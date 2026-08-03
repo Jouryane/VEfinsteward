@@ -1,0 +1,2279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>VE5 — 资产配置罗盘</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #050a14;
+  --bg-surface: #0b1321;
+  --bg-elevated: #111d2e;
+  --bg-inset: #0d1526;  /* 用于聊天气泡、输入框内嵌区域 */
+  --border-subtle: rgba(148,163,184,0.06);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --accent-cyan: #22d3ee;
+  --accent-indigo: #6366f1;
+  --accent-emerald: #34d399;
+  --accent-amber: #f59e0b;
+  --accent-rose: #f43f5e;
+  --radius-md: 14px;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+  height: 100%; font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  background: var(--bg-deep); color: var(--text-primary);
+}
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image: linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+  background-size: 60px 60px; pointer-events: none; z-index: 0;
+}
+.app { max-width: 1200px; margin: 0 auto; padding: 40px 24px; position: relative; z-index: 1; }
+
+/* Header */
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 32px; }
+.header h1 { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 12px; }
+.header h1::before { content: ''; width: 4px; height: 24px; background: linear-gradient(180deg, var(--accent-indigo), var(--accent-cyan)); border-radius: 2px; }
+.back-link { color: var(--accent-indigo); text-decoration: none; font-size: 13px; font-weight: 500; }
+.back-link:hover { color: var(--accent-cyan); }
+
+/* Grid */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* Surface */
+.surface {
+  background: linear-gradient(180deg, var(--bg-elevated), rgba(13,20,33,0.95));
+  border: 1px solid var(--border-subtle); border-radius: var(--radius-md);
+  padding: 28px; position: relative; overflow: hidden;
+}
+.surface::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(99,102,241,0.18), transparent); }
+.surface-title { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+.surface-title::before { content: ''; width: 3px; height: 16px; background: linear-gradient(180deg, var(--accent-indigo), var(--accent-cyan)); border-radius: 2px; }
+
+/* Pie Chart Canvas */
+.pie-wrap { display: flex; align-items: center; gap: 32px; flex-wrap: wrap; justify-content: center; }
+.pie-canvas { width: 220px; height: 220px; }
+.pie-legend { display: flex; flex-direction: column; gap: 14px; }
+.pie-legend-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+.pie-dot { width: 12px; height: 12px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+.pie-value { font-family: var(--mono); font-weight: 700; color: var(--text-primary); margin-left: auto; }
+
+/* Unclassified */
+.unc-list { display: flex; flex-direction: column; gap: 10px; }
+.unc-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-radius: 10px;
+  background: rgba(255,255,255,0.015); border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+.unc-item:hover { background: rgba(255,255,255,0.03); border-color: rgba(99,102,241,0.1); }
+.unc-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.unc-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.unc-value { font-family: var(--mono); font-size: 13px; color: var(--text-secondary); }
+.unc-actions { display: flex; gap: 8px; }
+.unc-btn {
+  font-size: 11px; padding: 5px 12px; border-radius: 6px; border: none;
+  cursor: pointer; font-weight: 600; transition: all 0.2s;
+}
+.unc-btn.classify { background: rgba(99,102,241,0.1); color: var(--accent-indigo); border: 1px solid rgba(99,102,241,0.15); }
+.unc-btn.classify:hover { background: rgba(99,102,241,0.2); }
+
+/* Holdings Table */
+.table-wrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.table th { text-align: left; padding: 12px 16px; color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-subtle); }
+.table td { padding: 14px 16px; border-bottom: 1px solid var(--border-subtle); color: var(--text-secondary); }
+.table tr:hover td { background: rgba(255,255,255,0.02); }
+.table td.name { color: var(--text-primary); font-weight: 600; }
+.table td.mono { font-family: var(--mono); }
+.table td.pos { color: var(--accent-emerald); }
+.table td.neg { color: var(--accent-rose); }
+
+/* Section title */
+.section-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1.8px;
+  color: var(--text-muted); margin: 32px 0 18px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-subtle), transparent); }
+
+/* Empty state */
+.empty-state {
+  text-align: center; padding: 48px 24px; color: var(--text-muted);
+}
+.empty-state-icon { font-size: 32px; opacity: 0.3; margin-bottom: 12px; }
+.empty-state-text { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+
+/* Comparison Bars */
+.compare-section { margin-bottom: 20px; }
+.compare-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.compare-label { width: 60px; font-size: 12px; color: var(--text-muted); text-align: right; }
+.compare-bars { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.compare-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.compare-bar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; position: relative; }
+.compare-bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.compare-bar-fill.current { background: linear-gradient(90deg, var(--accent-indigo), var(--accent-cyan)); }
+.compare-bar-fill.target { background: linear-gradient(90deg, rgba(99,102,241,0.3), rgba(34,211,238,0.3)); border: 1px dashed rgba(99,102,241,0.3); }
+.compare-bar-value { font-family: var(--mono); font-size: 11px; color: var(--text-secondary); width: 42px; text-align: right; }
+.compare-legend { display: flex; gap: 16px; margin-bottom: 20px; font-size: 11px; color: var(--text-muted); }
+.compare-legend span { display: flex; align-items: center; gap: 6px; }
+.compare-legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+/* Derivation Chain */
+.derivation { background: rgba(99,102,241,0.04); border: 1px solid rgba(99,102,241,0.08); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+.derivation-title { font-size: 12px; color: var(--accent-indigo); font-weight: 600; margin-bottom: 10px; }
+.derivation-step { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: flex; gap: 8px; }
+.derivation-step::before { content: '→'; color: var(--accent-indigo); opacity: 0.5; }
+.derivation-step:first-child::before { content: ''; width: 14px; }
+
+/* Dimension Scores */
+.dim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .dim-grid { grid-template-columns: 1fr; } }
+.dim-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 16px; }
+.dim-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.dim-card-name { font-size: 13px; font-weight: 600; }
+.dim-card-score { font-family: var(--mono); font-size: 18px; font-weight: 700; }
+.dim-card-score.good { color: var(--accent-emerald); }
+.dim-card-score.warn { color: var(--accent-amber); }
+.dim-card-score.danger { color: var(--accent-rose); }
+.dim-card-score.insufficient { color: var(--text-muted); font-size: 16px; }
+.dim-card-bar { height: 4px; background: rgba(255,255,255,0.04); border-radius: 2px; margin-bottom: 8px; overflow: hidden; }
+.dim-card-bar-inner { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+.dim-card-detail { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+/* Overall Health */
+.health-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 700;
+}
+.health-badge.excellent { background: rgba(52,211,153,0.1); color: var(--accent-emerald); border: 1px solid rgba(52,211,153,0.2); }
+.health-badge.good { background: rgba(34,211,238,0.1); color: var(--accent-cyan); border: 1px solid rgba(34,211,238,0.2); }
+.health-badge.fair { background: rgba(245,158,11,0.1); color: var(--accent-amber); border: 1px solid rgba(245,158,11,0.2); }
+.health-badge.poor { background: rgba(244,63,94,0.1); color: var(--accent-rose); border: 1px solid rgba(244,63,94,0.2); }
+
+/* Advice Cards */
+.advice-list { display: flex; flex-direction: column; gap: 10px; }
+.advice-item {
+  display: flex; gap: 12px; padding: 14px 16px; border-radius: 10px;
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle);
+  transition: all 0.2s ease;
+}
+.advice-item:hover { background: rgba(255,255,255,0.04); }
+.advice-priority { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.advice-priority.warning { background: rgba(244,63,94,0.12); color: var(--accent-rose); }
+.advice-priority.caution { background: rgba(245,158,11,0.12); color: var(--accent-amber); }
+.advice-priority.normal { background: rgba(52,211,153,0.12); color: var(--accent-emerald); }
+.advice-content { flex: 1; }
+.advice-dim { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.advice-text { font-size: 13px; color: var(--text-primary); line-height: 1.5; }
+.advice-meta { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-family: var(--mono); }
+
+/* Liquidity Coverage */
+.coverage-ring { position: relative; width: 120px; height: 120px; margin: 0 auto 16px; }
+.coverage-ring svg { transform: rotate(-90deg); }
+.coverage-ring-bg { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 8; }
+.coverage-ring-fill { fill: none; stroke: url(#grad1); stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s ease; }
+.coverage-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.coverage-pct { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+.coverage-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: none; align-items: center; justify-content: center; z-index: 100;
+  backdrop-filter: blur(8px);
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md); padding: 28px; width: 90%; max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modal h3 { font-size: 16px; margin-bottom: 20px; }
+.modal-row { margin-bottom: 16px; }
+.modal-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+.modal-select {
+  width: 100%; padding: 10px 14px; border-radius: 8px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle);
+  color: var(--text-primary); font-size: 13px;
+}
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.modal-btn {
+  padding: 9px 20px; border-radius: 8px; border: none; font-size: 13px;
+  font-weight: 600; cursor: pointer;
+}
+.modal-btn.cancel { background: transparent; color: var(--text-muted); }
+.modal-btn.save { background: linear-gradient(135deg, var(--accent-indigo), #8b5cf6); color: white; }
+
+/* Liquid Expand Panel */
+.liquid-sub-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.015);
+  border: 1px solid transparent;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+.liquid-sub-item:hover { background: rgba(255,255,255,0.03); border-color: rgba(34,211,238,0.1); }
+.liquid-sub-label { color: var(--text-secondary); }
+.liquid-sub-value { font-family: var(--mono); font-weight: 700; color: var(--text-primary); }
+.liquid-sub-pct { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
+.liquid-source { font-size: 11px; color: var(--text-muted); margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div class="app">
+
+  <div class="header">
+    <h1>资产配置罗盘</h1>
+    <a href="index.html" class="back-link">← 返回财务中枢</a>
+  </div>
+
+  <!-- Top: Pie + Unclassified -->
+  <div class="grid-2" style="margin-bottom: 20px;">
+    <!-- Pie Chart -->
+    <div class="surface">
+      <div class="surface-title">当前资产配置分布</div>
+      <div class="pie-wrap">
+        <canvas id="pieCanvas" class="pie-canvas" width="220" height="220"></canvas>
+        <div class="pie-legend" id="pieLegend">
+          <div class="pie-legend-item"><div class="pie-dot" style="background:#64748b"></div>暂无数据<span class="pie-value">--</span></div>
+        </div>
+      </div>
+      <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+        <span>已分类总资产</span>
+        <span style="font-family:var(--mono); color:var(--text-primary); font-weight:700;" id="classifiedTotal">¥--</span>
+      </div>
+
+      <!-- Liquid Expand -->
+      <div id="liquidExpand" style="display:none; margin-top:16px; padding-top:16px; border-top:1px solid var(--border-subtle);">
+        <!-- JS fills this -->
+      </div>
+    </div>
+
+    <!-- Unclassified -->
+    <div class="surface">
+      <div class="surface-title" style="display:flex; justify-content:space-between;">
+        <span>未识别资产</span>
+        <span style="font-size:11px; color:var(--text-muted); font-family:var(--mono);" id="unclassifiedCount">0 个</span>
+      </div>
+      <div class="unc-list" id="unclassifiedList">
+        <div class="empty-state">
+          <div class="empty-state-icon">◈</div>
+          <div class="empty-state-text">暂无未识别资产</div>
+        </div>
+      </div>
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+        <span>未识别总额</span>
+        <span style="font-family:var(--mono); color:var(--accent-amber); font-weight:700;" id="unclassifiedTotal">¥--</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recommendation Comparison -->
+  <div class="section-title">推荐配置对比</div>
+  <div class="grid-2">
+    <!-- Left: Comparison Bars + Derivation + Protection Management -->
+    <div class="surface">
+      <div class="surface-title">当前 vs 推荐</div>
+      <div class="compare-legend">
+        <span><div class="compare-legend-dot" style="background:linear-gradient(135deg,var(--accent-indigo),var(--accent-cyan))"></div>当前配置</span>
+        <span><div class="compare-legend-dot" style="background:linear-gradient(135deg,rgba(99,102,241,0.3),rgba(34,211,238,0.3)); border:1px dashed rgba(99,102,241,0.3)"></div>推荐目标</span>
+      </div>
+      <div class="compare-section" id="compareBars">
+        <!-- JS fills this -->
+      </div>
+
+      <!-- Derivation Chain -->
+      <div class="derivation" id="derivationChain" style="display:none;">
+        <div class="derivation-title">配置推荐推导链</div>
+        <div id="derivationSteps"></div>
+      </div>
+
+      <!-- Protection Management (moved here) -->
+      <div id="protectionManagement" style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(148,163,184,0.08);"></div>
+    </div>
+
+    <!-- Right: Liquidity Coverage + Potential Space (merged into one surface) -->
+    <div class="surface">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <!-- 应急资金覆盖率 -->
+        <div>
+          <div class="surface-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span>应急资金覆盖率</span>
+            <button onclick="openEmergencyScenarios()" style="padding:3px 10px; border-radius:6px; border:1px solid rgba(99,102,241,0.15); background:rgba(99,102,241,0.06); color:var(--accent-indigo); font-size:11px; cursor:pointer;">
+              选择场景
+            </button>
+          </div>
+          <div style="text-align:center; padding: 4px 0;">
+            <div class="coverage-ring">
+              <svg width="100" height="100" viewBox="0 0 120 120">
+                <defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:var(--accent-indigo)"/><stop offset="100%" style="stop-color:var(--accent-cyan)"/></linearGradient></defs>
+                <circle class="coverage-ring-bg" cx="60" cy="60" r="50"/>
+                <circle class="coverage-ring-fill" id="coverageRingFill" cx="60" cy="60" r="50"
+                  stroke-dasharray="314" stroke-dashoffset="314"/>
+              </svg>
+              <div class="coverage-text">
+                <div class="coverage-pct" id="coveragePct">--%</div>
+                <div class="coverage-label">覆盖率</div>
+              </div>
+            </div>
+            <div style="display:flex; justify-content:center; gap:16px; font-size:11px; color:var(--text-secondary);">
+              <div>应急目标 <span style="font-family:var(--mono); color:var(--text-primary);" id="coverageTarget">--</span></div>
+              <div>可流动 <span style="font-family:var(--mono); color:var(--text-primary);" id="coverageActual">--</span></div>
+            </div>
+            <div style="margin-top:6px; font-size:11px; color:var(--text-muted);" id="coverageStatus">--</div>
+            <!-- 已选场景标签 -->
+            <div id="selectedScenariosTags" style="margin-top:6px; display:none;">
+              <div style="font-size:10px; color:var(--text-muted); margin-bottom:4px;">已选场景：</div>
+              <div id="scenariosTagList" style="display:flex; flex-wrap:wrap; gap:3px; justify-content:center;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 潜力空间（已封存·非MVP） -->
+        <div style="opacity:0.4; pointer-events:none; display:flex; flex-direction:column; justify-content:center;">
+          <div class="surface-title" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span>潜力空间</span>
+            <span style="font-size:10px; padding:2px 8px; border-radius:10px; background:rgba(148,163,184,0.08); color:var(--text-muted); border:1px solid rgba(148,163,184,0.1);">远期规划</span>
+          </div>
+          <div style="min-height:60px;">
+            <div style="text-align:center; padding:8px 0; color:var(--text-muted); font-size:12px;">
+              <div style="font-size:20px; margin-bottom:4px; opacity:0.3;">✦</div>
+              <div>潜力空间分析模块</div>
+              <div style="margin-top:2px; font-size:11px;">战略规划二期功能，敬请期待</div>
+            </div>
+          </div>
+          <button disabled style="width:100%; margin-top:8px; padding:8px; border-radius:8px; border:1px solid rgba(148,163,184,0.1); background:rgba(148,163,184,0.03); color:var(--text-muted); font-size:12px; font-weight:600; cursor:not-allowed;">
+            暂未开放
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 逻辑解读流程图 -->
+  <div style="padding:14px 18px; margin-bottom:20px; border-radius:var(--radius-md); border:1px solid var(--border-subtle); background:linear-gradient(180deg, var(--bg-elevated), rgba(13,20,33,0.95));">
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+      <span style="font-size:12px; font-weight:600; color:var(--text-secondary);">逻辑解读</span>
+      <span style="font-size:9px; padding:1px 6px; border-radius:8px; background:rgba(99,102,241,0.08); color:var(--text-muted);">此流程为简略版</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:6px; font-size:10px; color:var(--text-muted);">
+      <span style="padding:3px 8px; border-radius:6px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.15); white-space:nowrap;">① 持仓分类</span>
+      <span style="color:var(--text-muted); opacity:0.4;">→</span>
+      <span style="padding:3px 8px; border-radius:6px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.15); white-space:nowrap;">② 注入上下文</span>
+      <span style="color:var(--text-muted); opacity:0.4;">→</span>
+      <span style="padding:3px 8px; border-radius:6px; background:rgba(34,211,238,0.08); border:1px solid rgba(34,211,238,0.15); white-space:nowrap;">③ LLM 推理</span>
+      <span style="color:var(--text-muted); opacity:0.4;">→</span>
+      <span style="padding:3px 8px; border-radius:6px; background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.15); white-space:nowrap;">④ 解读输出</span>
+      <span style="margin-left:auto; font-size:9px; color:var(--text-muted); opacity:0.6;">隐私数据推荐使用本地 · ai_gateway 统一调度</span>
+    </div>
+  </div>
+
+  <div class="section-title">目标捕获</div>
+  <div class="surface">
+    <div id="goalSystem" style="margin-bottom:16px;">
+      <!-- JS fills this -->
+    </div>
+  </div>
+
+  <!-- Actionable Advices -->
+  <div class="section-title">潜力方向</div>
+  <div class="surface">
+    <div class="advice-list" id="adviceList">
+      <div class="empty-state">
+        <div class="empty-state-icon">◈</div>
+        <div class="empty-state-text">暂无建议</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Holdings Table -->
+  <div class="section-title">持仓明细</div>
+  <div class="surface">
+    <div class="table-wrap">
+      <table class="table" id="holdingsTable">
+        <thead>
+          <tr>
+            <th>产品名称</th>
+            <th>分类</th>
+            <th>市值</th>
+            <th>持有收益率</th>
+            <th>持有天数</th>
+            <th>来源</th>
+          </tr>
+        </thead>
+        <tbody id="holdingsBody">
+          <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:40px;">加载中...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Future Roadmap (Grayed out non-MVP features) -->
+  <div class="section-title">远期规划 · 非MVP</div>
+  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; opacity:0.4; pointer-events:none;">
+    <div class="surface" style="padding:20px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span style="font-size:16px;">🔮</span>
+        <span style="font-size:13px; font-weight:600; color:var(--text-primary);">蒙特卡洛模拟</span>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">概率星云可视化，展示未来财富路径的置信区间。需积累至少12个月的历史数据。</div>
+    </div>
+    <div class="surface" style="padding:20px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span style="font-size:16px;">📉</span>
+        <span style="font-size:13px; font-weight:600; color:var(--text-primary);">压力测试</span>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">一键穿越到2008/2022年等黑天鹅场景，观察战略方案在极端市场下的表现。</div>
+    </div>
+    <div class="surface" style="padding:20px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span style="font-size:16px;">💰</span>
+        <span style="font-size:13px; font-weight:600; color:var(--text-primary);">税损收割</span>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">自动识别浮亏标的，建议卖出实现亏损以抵税，同时买入高度相关但非实质相同的替代标的。</div>
+    </div>
+    <div class="surface" style="padding:20px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span style="font-size:16px;">📰</span>
+        <span style="font-size:13px; font-weight:600; color:var(--text-primary);">研报驱动战术</span>
+      </div>
+      <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">基于券商研报和权威分析的宏观信号聚合，生成战术偏离建议并解释背后的逻辑。</div>
+    </div>
+  </div>
+
+  <!-- Operation Guide -->
+  <div class="surface" style="margin-top: 24px;">
+    <div class="surface-title" style="display:flex; align-items:center; gap:8px;">
+      <span>使用指引</span>
+      <span style="font-size:10px; padding:2px 8px; border-radius:10px; background:rgba(99,102,241,0.1); color:var(--accent-indigo); border:1px solid rgba(99,102,241,0.15);">OCR</span>
+    </div>
+    <div style="font-size:12px; color:var(--text-secondary); line-height:1.8;">
+      <div style="margin-bottom:12px;">
+        <strong style="color:var(--text-primary);">截图自动解析流程</strong>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr auto 1fr; gap:8px; align-items:center;">
+        <div style="text-align:center; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid var(--border-subtle);">
+          <div style="font-size:18px; margin-bottom:4px;">📱</div>
+          <div style="font-weight:600; color:var(--text-primary); font-size:12px;">蓝牙传截图</div>
+          <div style="font-size:11px; color:var(--text-muted);">银行/证券/基金</div>
+        </div>
+        <div style="text-align:center; color:var(--accent-indigo); font-size:16px;">→</div>
+        <div style="text-align:center; padding:12px; background:rgba(255,255,255,0.02); border-radius:8px; border:1px solid var(--border-subtle);">
+          <div style="font-size:18px; margin-bottom:4px;">🔍</div>
+          <div style="font-weight:600; color:var(--text-primary); font-size:12px;">自动 OCR</div>
+          <div style="font-size:11px; color:var(--text-muted);">分类 + 入库</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px; justify-content:center; margin:8px 0;">
+        <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
+        <span style="color:var(--accent-indigo); font-size:14px;">↓</span>
+        <div style="flex:1; height:1px; background:var(--border-subtle);"></div>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:8px;">
+        <div style="text-align:center; padding:10px 8px; background:rgba(52,211,153,0.04); border-radius:8px; border:1px solid rgba(52,211,153,0.1);">
+          <div style="font-size:11px; font-weight:600; color:var(--accent-emerald);">Step 1</div>
+          <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">本地 OCR</div>
+          <div style="font-size:10px; color:var(--text-muted);">pytesseract / easyocr</div>
+        </div>
+        <div style="text-align:center; padding:10px 8px; background:rgba(245,158,11,0.04); border-radius:8px; border:1px solid rgba(245,158,11,0.1);">
+          <div style="font-size:11px; font-weight:600; color:var(--accent-amber);">Step 2</div>
+          <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">云端视觉</div>
+          <div style="font-size:10px; color:var(--text-muted);">需配置 API KEY</div>
+        </div>
+        <div style="text-align:center; padding:10px 8px; background:rgba(99,102,241,0.04); border-radius:8px; border:1px solid rgba(99,102,241,0.1);">
+          <div style="font-size:11px; font-weight:600; color:var(--accent-indigo);">Step 3</div>
+          <div style="font-size:11px; color:var(--text-secondary); margin-top:4px;">自动更新</div>
+          <div style="font-size:10px; color:var(--text-muted);">15 秒内刷新</div>
+        </div>
+      </div>
+      <div style="margin-top:12px; padding:10px 14px; background:rgba(99,102,241,0.03); border-radius:8px; border:1px solid rgba(99,102,241,0.06); font-size:11px; color:var(--text-muted); line-height:1.7;">
+        <strong style="color:var(--accent-indigo);">隐私说明：</strong>
+        本地 OCR 完全离线，数据不出设备。云端视觉模式下截图会发送至 API 服务端。
+        如需使用云端，请设置环境变量 <code style="background:rgba(255,255,255,0.06); padding:1px 6px; border-radius:4px; font-family:var(--mono); font-size:10px;">TRAEV4_CLOUD_API_KEY</code>，
+        或在 <code style="background:rgba(255,255,255,0.06); padding:1px 6px; border-radius:4px; font-family:var(--mono); font-size:10px;">config/ai_providers.yaml</code> 中配置。
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Classify Modal -->
+<div class="modal-overlay" id="classifyModal">
+  <div class="modal">
+    <h3>补充分类信息</h3>
+    <div class="modal-row">
+      <div class="modal-label">产品</div>
+      <div id="modalProductName" style="font-size:13px; color:var(--text-primary); font-weight:600;">--</div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">资产大类</div>
+      <select class="modal-select" id="modalAssetClass">
+        <option value="cash">现金及等价物</option>
+        <option value="fixed_income">固定收益</option>
+        <option value="equity">权益类</option>
+        <option value="alternative">另类投资</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">流动性</div>
+      <select class="modal-select" id="modalLiquidity">
+        <option value="high">高（随时可取）</option>
+        <option value="medium">中（几天到账）</option>
+        <option value="low">低（有固定期限）</option>
+      </select>
+    </div>
+    <div class="modal-row">
+      <div class="modal-label">风险等级</div>
+      <select class="modal-select" id="modalRisk">
+        <option value="low">低</option>
+        <option value="medium_low">中低</option>
+        <option value="medium_high">中高</option>
+        <option value="high">高</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+      <button class="modal-btn save" onclick="saveClassification()">确认分类</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = '';
+
+/* ─── VE5 Session Token ─── */
+let _ve5_token = '';
+(function extractToken() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get('ve5_token');
+    if (t) {
+      _ve5_token = t;
+      const u = new URL(window.location.href);
+      u.searchParams.delete('ve5_token');
+      window.history.replaceState({}, '', u.pathname);
+      return;
+    }
+  } catch(e) {}
+  const m = document.cookie.match(/ve5_session_token=([^;]+)/);
+  if (m) _ve5_token = m[1];
+})();
+
+function ve5_fetch(url, options = {}) {
+  let tsUrl = url;
+  if (!url.includes('_t=')) {
+    const sep = url.includes('?') ? '&' : '?';
+    tsUrl = url + sep + '_t=' + Date.now();
+  }
+  if (_ve5_token && tsUrl.startsWith('/')) {
+    options.headers = options.headers || {};
+    options.headers['x-ve5-token'] = _ve5_token;
+  }
+  return fetch(tsUrl, options);
+}
+
+const ASSET_COLORS = {
+  cash: '#34d399',
+  fixed_income: '#0ea5e9',
+  equity: '#6366f1',
+  alternative: '#f59e0b',
+  unclassified: '#64748b',
+};
+const ASSET_LABELS = {
+  cash: '现金及等价物',
+  fixed_income: '固定收益',
+  equity: '权益类',
+  alternative: '另类投资',
+  unclassified: '未分类',
+};
+
+/* 四级分类配色 */
+const DETAIL_COLORS = {
+  liquid: '#22d3ee',
+  aggressive: '#6366f1',
+  stable: '#34d399',
+  protection: '#f59e0b',
+};
+const DETAIL_LABELS = {
+  liquid: '流动类',
+  aggressive: '进取类',
+  stable: '稳健类',
+  protection: '保障类',
+};
+
+let currentUncId = null;
+
+async function fetchJson(url) {
+  try { const r = await ve5_fetch(url); if (!r.ok) return null; return await r.json(); }
+  catch (e) { console.warn(e); return null; }
+}
+
+/* 离线快照降级 */
+async function fetchWithOfflineFallback(url, snapshotName) {
+  const data = await fetchJson(url);
+  if (data && !data.error) return data;
+  try {
+    const snapRes = await fetch(`../userdata/snapshots/${snapshotName}.json`);
+    if (snapRes.ok) { console.info(`[VE4] 使用离线快照: ${snapshotName}`); return await snapRes.json(); }
+  } catch (e) { /* 忽略 */ }
+  return null;
+}
+
+/* ─── Pie Chart ─── */
+function drawPie(groups, total) {
+  const canvas = document.getElementById('pieCanvas');
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2, cy = canvas.height / 2, radius = 90, inner = 55;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!total) {
+    ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 16; ctx.stroke();
+    return;
+  }
+
+  let angle = -Math.PI / 2;
+  groups.forEach(g => {
+    const slice = (g.total_value / total) * Math.PI * 2;
+    ctx.beginPath(); ctx.arc(cx, cy, radius, angle, angle + slice);
+    ctx.strokeStyle = DETAIL_COLORS[g.key] || g.color || '#64748b'; ctx.lineWidth = 16; ctx.stroke();
+    angle += slice;
+  });
+
+  // Inner circle
+  ctx.beginPath(); ctx.arc(cx, cy, inner, 0, Math.PI * 2);
+  ctx.fillStyle = 'var(--bg-elevated)'; ctx.fill();
+
+  // Center text
+  ctx.fillStyle = 'var(--text-primary)'; ctx.font = 'bold 18px Inter';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('¥' + (total / 10000).toFixed(1) + '万', cx, cy);
+}
+
+/* ─── Load Allocation Detail ─── */
+async function loadAllocationDetail() {
+  const [data, summary] = await Promise.all([
+    fetchWithOfflineFallback(`${API_BASE}/api/v1/allocation/detail-generate`, 'allocation_detail'),
+    fetchJson(`${API_BASE}/api/v1/asset/summary`)
+  ]);
+
+  if (!data || data.error) {
+    console.warn('Allocation detail load failed:', data?.error);
+    return;
+  }
+
+  const groups = data.groups || [];
+  const totalClassified = data.total_classified || 0;
+  const liquidBreakdown = data.liquid_breakdown || {};
+
+  // Pie
+  drawPie(groups, totalClassified);
+
+  // Legend
+  const legend = document.getElementById('pieLegend');
+  legend.innerHTML = '';
+  groups.forEach(g => {
+    const item = document.createElement('div');
+    item.className = 'pie-legend-item';
+    item.style.cursor = g.key === 'liquid' ? 'pointer' : 'default';
+    item.title = g.key === 'liquid' ? '点击查看流动类展开' : '';
+    item.innerHTML = `<div class="pie-dot" style="background:${g.color}"></div>${g.label} <span style="font-size:11px;color:var(--text-muted);">(${g.count}个)</span><span class="pie-value">¥${Math.round(g.total_value).toLocaleString()}</span>`;
+    if (g.key === 'liquid') {
+      item.onclick = () => toggleLiquidExpand();
+    }
+    legend.appendChild(item);
+  });
+
+  document.getElementById('classifiedTotal').textContent = '¥' + Math.round(totalClassified).toLocaleString();
+
+  // Unclassified from summary
+  const unclassified = summary?.unclassified || {};
+  document.getElementById('unclassifiedCount').textContent = (unclassified.count || 0) + ' 个';
+  document.getElementById('unclassifiedTotal').textContent = '¥' + Math.round(unclassified.value || 0).toLocaleString();
+
+  // Liquid expand panel
+  renderLiquidExpand(liquidBreakdown);
+}
+
+let liquidExpanded = false;
+function toggleLiquidExpand() {
+  liquidExpanded = !liquidExpanded;
+  const el = document.getElementById('liquidExpand');
+  if (el) el.style.display = liquidExpanded ? 'block' : 'none';
+}
+
+function renderLiquidExpand(breakdown) {
+  const container = document.getElementById('liquidExpand');
+  if (!container) return;
+  if (!breakdown || !breakdown.total_liquid) {
+    container.style.display = 'none';
+    return;
+  }
+
+  const daily = breakdown.daily_reserve || 0;
+  const other = breakdown.other_reserve || 0;
+  const total = breakdown.total_liquid || 1;
+  const dailyPct = breakdown.daily_reserve_pct || 0;
+  const otherPct = breakdown.other_reserve_pct || 0;
+
+  container.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div class="liquid-sub-item">
+        <div>
+          <div class="liquid-sub-label">日常备用金</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">月均支出 × ${breakdown.emergency_months}个月</div>
+        </div>
+        <div>
+          <span class="liquid-sub-value">¥${Math.round(daily).toLocaleString()}</span>
+          <span class="liquid-sub-pct">${dailyPct}%</span>
+        </div>
+      </div>
+      <div class="liquid-sub-item">
+        <div>
+          <div class="liquid-sub-label">其它备用金</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">流动类总额 − 日常备用金</div>
+        </div>
+        <div>
+          <span class="liquid-sub-value">¥${Math.round(other).toLocaleString()}</span>
+          <span class="liquid-sub-pct">${otherPct}%</span>
+        </div>
+      </div>
+    </div>
+    <div class="liquid-source">${breakdown.daily_reserve_source || ''}</div>
+  `;
+  container.style.display = liquidExpanded ? 'block' : 'none';
+}
+
+/* ─── Load Unclassified ─── */
+async function loadUnclassified() {
+  const list = await fetchJson(`${API_BASE}/api/v1/asset/unclassified?limit=10`);
+  const container = document.getElementById('unclassifiedList');
+  if (!list || !list.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◈</div><div class="empty-state-text">暂无未识别资产</div></div>`;
+    return;
+  }
+  container.innerHTML = '';
+  list.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'unc-item';
+    div.innerHTML = `
+      <div>
+        <div class="unc-name">${item.product_name}</div>
+        <div class="unc-meta">${item.account_key}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="unc-value">¥${Math.round(item.current_value || 0).toLocaleString()}</div>
+        <div class="unc-actions">
+          <button class="unc-btn classify" onclick="openModal(${item.id}, '${item.product_name.replace(/'/g, "\\'")}')">分类</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+/* ─── Load Holdings ─── */
+async function loadHoldings() {
+  const list = await fetchJson(`${API_BASE}/api/v1/asset/holdings?limit=50`);
+  const tbody = document.getElementById('holdingsBody');
+  if (!list || !list.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:40px;">暂无持仓数据，请通过蓝牙上传截图</td></tr>';
+    return;
+  }
+  tbody.innerHTML = '';
+  list.forEach(h => {
+    const clsLabel = ASSET_LABELS[h.asset_class] || '未分类';
+    const clsColor = ASSET_COLORS[h.asset_class] || '#64748b';
+    const ret = h.holding_return_pct || 0;
+    const retClass = ret > 0 ? 'pos' : (ret < 0 ? 'neg' : '');
+    const retStr = ret > 0 ? `+${ret}%` : `${ret}%`;
+    const days = h.holding_days || '--';
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td class="name">${h.product_name}<div style="font-size:11px; color:var(--text-muted); font-weight:400; margin-top:2px;">${h.product_code || ''}</div></td>
+      <td><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${clsColor}; margin-right:6px;"></span>${clsLabel}</td>
+      <td class="mono">¥${Math.round(h.current_value || 0).toLocaleString()}</td>
+      <td class="mono ${retClass}">${retStr}</td>
+      <td class="mono">${days}</td>
+      <td style="font-size:11px; color:var(--text-muted);">${h.source_file ? h.source_file.split('/').pop() : '--'}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+/* ─── Modal ─── */
+function openModal(id, name) {
+  currentUncId = id;
+  document.getElementById('modalProductName').textContent = name;
+  document.getElementById('classifyModal').classList.add('active');
+}
+function closeModal() {
+  currentUncId = null;
+  document.getElementById('classifyModal').classList.remove('active');
+}
+async function saveClassification() {
+  if (!currentUncId) return;
+  const payload = {
+    id: currentUncId,
+    asset_class: document.getElementById('modalAssetClass').value,
+    liquidity: document.getElementById('modalLiquidity').value,
+    risk: document.getElementById('modalRisk').value,
+  };
+  try {
+    await ve5_fetch(`${API_BASE}/api/v1/asset/classify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    closeModal();
+    refreshAll();
+  } catch (e) { alert('保存失败'); }
+}
+
+/* ─── Allocation Report ─── */
+async function loadReport() {
+  // 获取应急场景总金额
+  let emergencyTarget = 0;
+  try {
+    const selected = JSON.parse(localStorage.getItem('ve5_selected_emergency') || '[]');
+    emergencyTarget = selected.reduce((sum, s) => sum + (s.amount || 0), 0);
+  } catch(e) {}
+
+  // 用POST请求传递应急目标
+  let data = null;
+  try {
+    const r = await ve5_fetch(`${API_BASE}/api/v1/allocation/report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emergency_target: emergencyTarget })
+    });
+    if (r.ok) data = await r.json();
+  } catch (e) { console.warn('Report POST failed:', e); }
+
+  // POST失败时使用离线缓存
+  if (!data || data.error) {
+    try {
+      const snapRes = await fetch(`../userdata/snapshots/allocation_report.json`);
+      if (snapRes.ok) { console.info('[VE4] 使用离线快照: allocation_report'); data = await snapRes.json(); }
+    } catch (e) { /* 忽略 */ }
+  }
+
+  if (!data || data.error) {
+    console.warn('Report load failed:', data?.error);
+    return;
+  }
+  window._lastReportData = data;
+  renderComparison(data);
+  renderLiquidity(data.liquidity);
+  renderProtectionManagement(data.protection_management);
+  renderAdvices(data.advices);
+  renderGoalSystem(data);
+  renderPotentialSpaceFromCache();
+}
+
+function renderComparison(data) {
+  const actual = data.actual || {};
+  const fw = data.framework || {};
+  const bars = document.getElementById('compareBars');
+
+  const rows = [
+    { key: 'liquid', label: '活钱', current: (actual.liquid_pct || 0) * 100, target: (fw.liquid_pct || 0) * 100, color: '#22d3ee' },
+    { key: 'stable', label: '防御', current: (actual.stable_pct || 0) * 100, target: (fw.stable_pct || 0) * 100, color: '#34d399' },
+    { key: 'aggressive', label: '进取', current: (actual.aggressive_pct || 0) * 100, target: (fw.aggressive_pct || 0) * 100, color: '#6366f1' },
+  ];
+
+  bars.innerHTML = rows.map(r => {
+    const max = Math.max(r.current, r.target, 20);
+    const curW = Math.min((r.current / max) * 100, 100);
+    const tgtW = Math.min((r.target / max) * 100, 100);
+    return `
+      <div class="compare-row">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <div class="compare-label" style="margin:0;">${r.label}</div>
+          <button onclick="openAllocationChat('${r.key}')" style="padding:2px 8px; border-radius:5px; border:1px solid ${r.color}33; background:${r.color}10; color:${r.color}; font-size:10px; cursor:pointer; font-weight:500;">
+            💬 AI解读
+          </button>
+        </div>
+        <div class="compare-bars">
+          <div class="compare-bar-wrap">
+            <div class="compare-bar-track"><div class="compare-bar-fill current" style="width:${curW}%"></div></div>
+            <div class="compare-bar-value">${r.current.toFixed(1)}%</div>
+          </div>
+          <div class="compare-bar-wrap">
+            <div class="compare-bar-track"><div class="compare-bar-fill target" style="width:${tgtW}%"></div></div>
+            <div class="compare-bar-value">${r.target.toFixed(1)}%</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Derivation chain
+  const deriv = fw.derivation;
+  if (deriv) {
+    document.getElementById('derivationChain').style.display = 'block';
+    const steps = document.getElementById('derivationSteps');
+    const baseReserve = deriv.base_living_reserve || 0;
+    const emergencyTarget = deriv.emergency_target_amount || 0;
+    const totalNeed = deriv.total_emergency_need || 0;
+    steps.innerHTML = `
+      <div class="derivation-step">月均支出 ¥${(deriv.monthly_expense || 0).toLocaleString()} → 基础生活费储备(3个月) ¥${baseReserve.toLocaleString()}</div>
+      <div class="derivation-step">应急场景金额 ¥${emergencyTarget.toLocaleString()} → 总应急需求 ¥${totalNeed.toLocaleString()}</div>
+      <div class="derivation-step">活钱目标 = 总应急需求 / 总资产 = ${deriv.final_liquid_pct}%（剩余${deriv.remaining_pct}%按${deriv.allocation_source || '矩阵'}分配）</div>
+    `;
+  }
+}
+
+function ve4_escapeHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderLiquidity(liq) {
+  if (!liq) return;
+  const ratio = Math.min((liq.coverage_ratio || 0), 1);
+  const pct = Math.round((liq.coverage_ratio || 0) * 100);
+  const offset = 314 - (314 * ratio);
+  document.getElementById('coverageRingFill').style.strokeDashoffset = offset;
+  document.getElementById('coveragePct').textContent = pct + '%';
+  document.getElementById('coverageTarget').textContent = '¥' + Math.round(liq.emergency_target || 0).toLocaleString();
+  document.getElementById('coverageActual').textContent = '¥' + Math.round(liq.liquidable_assets || 0).toLocaleString();
+
+  const statusMap = { full: '应急资金充足', partial: '应急资金部分覆盖', insufficient: '⚠️ 应急资金不足' };
+  const statusEl = document.getElementById('coverageStatus');
+  statusEl.textContent = statusMap[liq.status] || '--';
+  statusEl.style.color = liq.status === 'insufficient' ? 'var(--accent-rose)' :
+                         liq.status === 'partial' ? 'var(--accent-amber)' : 'var(--accent-emerald)';
+}
+
+function renderProtectionManagement(pm) {
+  const el = document.getElementById('protectionManagement');
+  if (!pm || pm.surplus_amount === undefined) { if (el) el.innerHTML = ''; return; }
+
+  // 保障类型列表
+  const types = pm.protection_types || {};
+  const typeEntries = Object.entries(types);
+  const typesHtml = typeEntries.length ? typeEntries.map(([t, info]) => `
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0;">
+      <span style="font-size:12px; color:var(--text-secondary);">${t} <span style="color:var(--text-muted); font-size:11px;">(${info.count}个)</span></span>
+      <span style="font-family:var(--mono); font-size:12px; color:var(--text-primary);">¥${Math.round(info.amount).toLocaleString()}</span>
+    </div>
+  `).join('') : '<div style="font-size:11px; color:var(--text-muted);">暂无保障类资产</div>';
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <span style="font-size:14px;font-weight:600;color:var(--text-primary);">保障管理</span>
+      <span style="font-size:11px;padding:2px 10px;border-radius:10px;background:rgba(148,163,184,0.06);color:var(--text-muted);">非战略配置项</span>
+      <button onclick="openAllocationChat('protection')" style="margin-left:auto; padding:3px 10px; border-radius:6px; border:1px solid rgba(245,158,11,0.2); background:rgba(245,158,11,0.08); color:#f59e0b; font-size:11px; cursor:pointer; font-weight:500;">
+        💬 AI解读
+      </button>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);line-height:1.6;margin-bottom:12px;">
+      ${ve4_escapeHtml(pm.note || '').replace(/\n/g, '<br>')}
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-bottom:12px; padding:12px 14px; border-radius:10px; background:rgba(148,163,184,0.03); border:1px solid rgba(148,163,184,0.06);">
+      <div><span style="color:var(--text-muted);font-size:11px;">总资产</span><br><span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text-primary);">¥${Math.round(pm.total_assets || 0).toLocaleString()}</span></div>
+      <div><span style="color:var(--text-muted);font-size:11px;">已配置进取</span><br><span style="font-family:var(--mono);font-size:13px;color:#6366f1;">¥${Math.round(pm.allocated_aggressive || 0).toLocaleString()}</span></div>
+      <div><span style="color:var(--text-muted);font-size:11px;">已配置稳健</span><br><span style="font-family:var(--mono);font-size:13px;color:#34d399;">¥${Math.round(pm.allocated_stable || 0).toLocaleString()}</span></div>
+      <div><span style="color:var(--text-muted);font-size:11px;">已配置保障</span><br><span style="font-family:var(--mono);font-size:13px;color:#f59e0b;">¥${Math.round(pm.allocated_protection || 0).toLocaleString()}</span></div>
+      <div><span style="color:var(--text-muted);font-size:11px;">生活必需流动资金</span><br><span style="font-family:var(--mono);font-size:13px;color:#22d3ee;">¥${Math.round(pm.essential_liquid || 0).toLocaleString()}</span></div>
+      <div style="border-left:1px solid rgba(148,163,184,0.12);padding-left:14px;">
+        <span style="color:var(--text-muted);font-size:11px;">可分配盈余</span><br>
+        <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:#34d399;">¥${Math.round(pm.surplus_amount || 0).toLocaleString()}</span>
+        <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${pm.surplus_pct || 0}%)</span>
+      </div>
+    </div>
+    ${typeEntries.length ? `
+    <div style="margin-bottom:8px;">
+      <div style="font-size:12px; font-weight:500; color:var(--text-secondary); margin-bottom:6px;">保障类型分布</div>
+      <div style="padding:8px 10px; border-radius:8px; background:rgba(245,158,11,0.04); border:1px solid rgba(245,158,11,0.08);">
+        ${typesHtml}
+      </div>
+    </div>
+    ` : ''}
+  `;
+}
+
+/* ─── Allocation Chat Modal ─── */
+let _chatContextType = null;
+
+function openAllocationChat(contextType) {
+  _chatContextType = contextType;
+  const typeLabels = {
+    liquid: '流动类资产解读',
+    stable: '稳健类资产解读',
+    aggressive: '进取类资产解读',
+    protection: '保障管理解读',
+  };
+  const typeColors = {
+    liquid: '#22d3ee',
+    stable: '#34d399',
+    aggressive: '#6366f1',
+    protection: '#f59e0b',
+  };
+  const label = typeLabels[contextType] || '资产解读';
+  const color = typeColors[contextType] || '#6366f1';
+
+  // 创建弹窗
+  let modal = document.getElementById('allocationChatModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'allocationChatModal';
+    modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; opacity:0; transition:opacity 0.2s;';
+    modal.onclick = (e) => { if (e.target === modal) closeAllocationChat(); };
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="width:90%; max-width:520px; max-height:80vh; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:14px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:16px 18px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; gap:10px;">
+        <div style="width:32px; height:32px; border-radius:8px; background:${color}15; display:flex; align-items:center; justify-content:center; font-size:16px;">💬</div>
+        <div style="flex:1;">
+          <div style="font-size:14px; font-weight:600; color:var(--text-primary);">${label}</div>
+          <div style="font-size:11px; color:var(--text-muted);">AI辅助解读，仅供参考</div>
+        </div>
+        <button onclick="closeAllocationChat()" style="width:28px; height:28px; border-radius:6px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center;">✕</button>
+      </div>
+      <div id="chatMessages" style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; min-height:300px;">
+        <div style="align-self:flex-start; max-width:85%; padding:10px 14px; border-radius:12px 12px 12px 4px; background:var(--bg-inset); color:var(--text-secondary); font-size:12px; line-height:1.7;">
+          你好！我可以帮你解读${label.replace('解读', '')}的作用和价值。你想了解什么？<br>
+          <span style="font-size:11px; color:var(--text-muted);">提示：你可以问"这些资产在我的配置中起什么作用？"或"如果调整这部分会怎样？"</span>
+        </div>
+      </div>
+      <div style="padding:12px 16px; border-top:1px solid var(--border-subtle); display:flex; gap:8px;">
+        <input type="text" id="chatInput" placeholder="输入你的问题..." 
+               onkeydown="if(event.key==='Enter') sendChatMessage()"
+               style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-inset); color:var(--text-primary); font-size:13px; outline:none;" />
+        <button onclick="sendChatMessage()" id="chatSendBtn" style="padding:8px 16px; border-radius:8px; border:none; background:${color}; color:white; font-size:12px; font-weight:600; cursor:pointer;">发送</button>
+      </div>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => { modal.style.opacity = '1'; });
+  setTimeout(() => document.getElementById('chatInput').focus(), 100);
+}
+
+function closeAllocationChat() {
+  const modal = document.getElementById('allocationChatModal');
+  if (modal) {
+    modal.style.opacity = '0';
+    setTimeout(() => { modal.style.display = 'none'; }, 200);
+  }
+}
+
+/* ─── Goal Analysis Chat ─── */
+let _goalAnalysisModal = null;
+
+function openGoalAnalysisChat() {
+  let selectedGoals = [];
+  try { selectedGoals = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+  if (!selectedGoals.length) { alert('请先选择至少一个目标'); return; }
+
+  // 自动发起首次分析
+  if (!_goalAnalysisModal) {
+    _goalAnalysisModal = document.createElement('div');
+    _goalAnalysisModal.id = 'goalAnalysisModal';
+    _goalAnalysisModal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; opacity:0; transition:opacity 0.2s;';
+    _goalAnalysisModal.onclick = (e) => { if (e.target === _goalAnalysisModal) closeGoalAnalysisChat(); };
+    document.body.appendChild(_goalAnalysisModal);
+  }
+
+  const goalTags = selectedGoals.map(g => `${g.icon} ${g.name}`).join('、');
+  _goalAnalysisModal.innerHTML = `
+    <div style="width:90%; max-width:560px; max-height:80vh; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:14px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:14px 18px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div style="font-size:14px; font-weight:600; color:var(--text-primary);">目标达成路径分析</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${goalTags}</div>
+        </div>
+        <button onclick="closeGoalAnalysisChat()" style="background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; padding:4px;">✕</button>
+      </div>
+      <div id="goalAnalysisMessages" style="flex:1; padding:14px 18px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; min-height:200px;">
+        <div style="align-self:flex-start; max-width:85%; padding:10px 14px; border-radius:12px 12px 12px 4px; background:var(--bg-inset); color:var(--text-muted); font-size:12px;">
+          <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent-cyan); margin-right:6px; animation:pulse 1s infinite;"></span>
+          正在分析你的目标达成路径...
+        </div>
+      </div>
+      <div style="padding:10px 18px; border-top:1px solid var(--border-subtle); display:flex; gap:8px;">
+        <input id="goalAnalysisInput" placeholder="追问具体目标的实现细节..." style="flex:1; padding:8px 12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-inset); color:var(--text-primary); font-size:13px; outline:none;" onkeydown="if(event.key==='Enter') sendGoalAnalysisMessage()" />
+        <button onclick="sendGoalAnalysisMessage()" id="goalAnalysisSendBtn" style="padding:8px 16px; border-radius:8px; border:none; background:linear-gradient(135deg,var(--accent-indigo),var(--accent-cyan)); color:white; font-size:12px; font-weight:600; cursor:pointer;">发送</button>
+      </div>
+    </div>
+  `;
+
+  _goalAnalysisModal.style.display = 'flex';
+  requestAnimationFrame(() => { _goalAnalysisModal.style.opacity = '1'; });
+
+  // 自动发起首次分析
+  _runGoalAnalysis(selectedGoals);
+}
+
+function closeGoalAnalysisChat() {
+  if (_goalAnalysisModal) {
+    _goalAnalysisModal.style.opacity = '0';
+    setTimeout(() => { _goalAnalysisModal.style.display = 'none'; }, 200);
+  }
+}
+
+async function _runGoalAnalysis(goals) {
+  const messagesEl = document.getElementById('goalAnalysisMessages');
+  if (!messagesEl) return;
+  try {
+    const resp = await ve5_fetch(`${API_BASE}/api/v1/allocation/goals/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goals: goals })
+    });
+    const data = await resp.json();
+    // 清除 loading
+    messagesEl.innerHTML = '';
+    if (data.status === 'success') {
+      // 将分析文本作为 plan_text 持久化（非结构化保存）
+      let selected = [];
+      try { selected = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+      // 为所有目标记录本次分析文本
+      selected.forEach(g => { g.plan_text = data.response; });
+      localStorage.setItem('ve5_selected_goals', JSON.stringify(selected));
+      persistGoalsToServer(selected);
+
+      const aiMsg = document.createElement('div');
+      aiMsg.style.cssText = 'align-self:flex-start; max-width:90%; padding:12px 16px; border-radius:12px 12px 12px 4px; background:var(--bg-inset); color:var(--text-secondary); font-size:12px; line-height:1.8; white-space:pre-wrap;';
+      aiMsg.innerHTML = ve4_escapeHtml(data.response || '暂无分析').replace(/\n/g, '<br>');
+      messagesEl.appendChild(aiMsg);
+    } else {
+      messagesEl.innerHTML = `<div style="color:var(--accent-rose); font-size:12px;">分析失败：${ve4_escapeHtml(data.error || '未知错误')}</div>`;
+    }
+  } catch(e) {
+    messagesEl.innerHTML = `<div style="color:var(--accent-rose); font-size:12px;">请求失败：${ve4_escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function sendGoalAnalysisMessage() {
+  const input = document.getElementById('goalAnalysisInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const messagesEl = document.getElementById('goalAnalysisMessages');
+  const sendBtn = document.getElementById('goalAnalysisSendBtn');
+
+  // 用户消息
+  const userMsg = document.createElement('div');
+  userMsg.style.cssText = 'align-self:flex-end; max-width:85%; padding:10px 14px; border-radius:12px 12px 4px 12px; background:linear-gradient(135deg,var(--accent-indigo),var(--accent-cyan)); color:white; font-size:12px; line-height:1.6;';
+  userMsg.textContent = msg;
+  messagesEl.appendChild(userMsg);
+
+  // Loading
+  const loadingMsg = document.createElement('div');
+  loadingMsg.style.cssText = 'align-self:flex-start; max-width:85%; padding:10px 14px; border-radius:12px 12px 12px 4px; background:var(--bg-inset); color:var(--text-muted); font-size:12px;';
+  loadingMsg.innerHTML = '<span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent-cyan); margin-right:6px; animation:pulse 1s infinite;"></span> 正在思考...';
+  messagesEl.appendChild(loadingMsg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  sendBtn.disabled = true;
+
+  try {
+    // 使用 chat API，context_type=goal_analysis，但把 goals 信息嵌入用户消息
+    let selectedGoals = [];
+    try { selectedGoals = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+
+    const resp = await ve5_fetch(`${API_BASE}/api/v1/allocation/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        context_type: 'goal_analysis',
+        message: msg,
+        goals: selectedGoals
+      })
+    });
+    const data = await resp.json();
+    loadingMsg.remove();
+    if (data.status === 'success') {
+      const aiMsg = document.createElement('div');
+      aiMsg.style.cssText = 'align-self:flex-start; max-width:85%; padding:10px 14px; border-radius:12px 12px 12px 4px; background:var(--bg-inset); color:var(--text-secondary); font-size:12px; line-height:1.7;';
+      aiMsg.innerHTML = ve4_escapeHtml(data.response || '暂无回复').replace(/\n/g, '<br>');
+      messagesEl.appendChild(aiMsg);
+    } else {
+      const errMsg = document.createElement('div');
+      errMsg.style.cssText = 'color:var(--accent-rose); font-size:12px;';
+      errMsg.textContent = '分析失败：' + (data.error || '服务不可用');
+      messagesEl.appendChild(errMsg);
+    }
+  } catch(e) {
+    loadingMsg.remove();
+    const errMsg = document.createElement('div');
+    errMsg.style.cssText = 'color:var(--accent-rose); font-size:12px;';
+    errMsg.textContent = '对话失败：' + (e.message || '服务不可用');
+    messagesEl.appendChild(errMsg);
+  } finally {
+    sendBtn.disabled = false;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  const messagesEl = document.getElementById('chatMessages');
+  const sendBtn = document.getElementById('chatSendBtn');
+
+  // 用户消息
+  const userMsg = document.createElement('div');
+  userMsg.style.cssText = 'align-self:flex-end; max-width:85%; padding:10px 14px; border-radius:12px 12px 4px 12px; background:linear-gradient(135deg,var(--accent-indigo),var(--accent-cyan)); color:white; font-size:12px; line-height:1.6;';
+  userMsg.textContent = msg;
+  messagesEl.appendChild(userMsg);
+
+  // Loading
+  const loadingMsg = document.createElement('div');
+  loadingMsg.style.cssText = 'align-self:flex-start; max-width:85%; padding:10px 14px; border-radius:12px 12px 12px 4px; background:var(--bg-inset); color:var(--text-muted); font-size:12px;';
+  loadingMsg.innerHTML = '<span style="display:inline-block; animation:bounce 1s infinite;">●</span> 正在思考...';
+  messagesEl.appendChild(loadingMsg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  sendBtn.disabled = true;
+
+  try {
+    const resp = await ve5_fetch(`${API_BASE}/api/v1/allocation/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        context_type: _chatContextType,
+        message: msg
+      })
+    });
+    const data = await resp.json();
+    loadingMsg.remove();
+
+    const aiMsg = document.createElement('div');
+    aiMsg.style.cssText = 'align-self:flex-start; max-width:85%; padding:10px 14px; border-radius:12px 12px 12px 4px; background:var(--bg-inset); color:var(--text-secondary); font-size:12px; line-height:1.7;';
+    aiMsg.innerHTML = ve4_escapeHtml(data.response || '暂无回复').replace(/\n/g, '<br>');
+    messagesEl.appendChild(aiMsg);
+  } catch(e) {
+    loadingMsg.remove();
+    const errMsg = document.createElement('div');
+    errMsg.style.cssText = 'align-self:flex-start; max-width:85%; padding:10px 14px; border-radius:12px 12px 12px 4px; background:rgba(244,63,94,0.08); color:var(--accent-rose); font-size:12px;';
+    errMsg.textContent = '对话失败：' + (e.message || '服务不可用');
+    messagesEl.appendChild(errMsg);
+  } finally {
+    sendBtn.disabled = false;
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+}
+
+/* ─── Emergency Scenarios ─── */
+const DEFAULT_EMERGENCY_SCENARIOS = [
+  { id: 'e1', name: '突发疾病住院', amount: 50000, category: '健康医疗', description: '重大疾病或意外受伤的住院治疗费', icon: '🏥', editable: true },
+  { id: 'e2', name: '失业过渡期', amount: 30000, category: '工作职业', description: '6个月基本生活费，应对职业空档期', icon: '💼', editable: true },
+  { id: 'e3', name: '家电全坏大更换', amount: 20000, category: '家庭生活', description: '冰箱/洗衣机/空调/热水器同时故障', icon: '🏠', editable: true },
+  { id: 'e4', name: '亲友紧急周转', amount: 30000, category: '人情往来', description: '家人或挚友急需用钱的关键时刻', icon: '🤝', editable: true },
+  { id: 'e5', name: 'Gap Month 放空', amount: 15000, category: '个人成长', description: '裸辞旅行、学习新技能的缓冲期', icon: '🌴', editable: true },
+  { id: 'e6', name: '交通事故处理', amount: 10000, category: '意外事件', description: '车辆事故/交通意外的应急处理费', icon: '🚗', editable: true },
+  { id: 'other', name: '自定义场景', amount: 0, category: '自定义', description: '自定义应急场景', icon: '✏️', editable: true },
+];
+
+let _emergencyScenarios = [];
+let _selectedScenarios = [];
+
+function openEmergencyScenarios() {
+  // 初始化数据
+  initEmergencyScenarios();
+  
+  // 创建弹窗
+  let modal = document.getElementById('emergencyScenariosModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'emergencyScenariosModal';
+    modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; opacity:0; transition:opacity 0.2s;';
+    modal.onclick = (e) => { if (e.target === modal) closeEmergencyScenarios(); };
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="width:92%; max-width:560px; max-height:85vh; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:14px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="padding:16px 18px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; gap:10px;">
+        <div style="width:32px; height:32px; border-radius:8px; background:rgba(34,211,238,0.15); display:flex; align-items:center; justify-content:center; font-size:16px;">🛡️</div>
+        <div style="flex:1;">
+          <div style="font-size:14px; font-weight:600; color:var(--text-primary);">应急资金场景选择</div>
+          <div style="font-size:11px; color:var(--text-muted);">选择你需要覆盖的应急场景</div>
+        </div>
+        <button onclick="closeEmergencyScenarios()" style="width:28px; height:28px; border-radius:6px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; font-size:18px; display:flex; align-items:center; justify-content:center;">✕</button>
+      </div>
+      <div style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-subtle);">
+        <button onclick="refreshEmergencyScenarios()" id="refreshScenariosBtn" style="padding:4px 12px; border-radius:6px; border:1px solid rgba(99,102,241,0.2); background:rgba(99,102,241,0.08); color:var(--accent-indigo); font-size:11px; cursor:pointer;">
+          🔄 LLM更新场景
+        </button>
+        <div style="font-size:11px; color:var(--text-muted);">
+          已选 <span id="selectedScenarioCount" style="color:var(--text-primary); font-weight:600;">0</span> 个场景
+        </div>
+      </div>
+      <div id="emergencyScenariosList" style="flex:1; overflow-y:auto; padding:12px 16px; display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        <!-- JS fills this -->
+      </div>
+      <div style="padding:12px 16px; border-top:1px solid var(--border-subtle); display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:12px; color:var(--text-muted);">预估总金额</div>
+        <div style="font-size:16px; font-family:var(--mono); font-weight:700; color:var(--accent-indigo);" id="totalScenarioAmount">¥0</div>
+      </div>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => { modal.style.opacity = '1'; });
+  
+  // 渲染数据
+  renderEmergencyScenarios();
+  updateScenariosSummary();
+}
+
+function closeEmergencyScenarios() {
+  const modal = document.getElementById('emergencyScenariosModal');
+  if (modal) {
+    modal.style.opacity = '0';
+    setTimeout(() => { modal.style.display = 'none'; }, 200);
+  }
+}
+
+function initEmergencyScenarios() {
+  // 优先从服务端 userdata 加载（跨浏览器/重启持久化），回退到 localStorage
+  const initFromData = (data) => {
+    _emergencyScenarios = (data.scenarios && data.scenarios.length) ? data.scenarios : [...DEFAULT_EMERGENCY_SCENARIOS];
+    _selectedScenarios = (data.selected && data.selected.length) ? data.selected : [];
+    // 同步到 localStorage 作为本地缓存
+    localStorage.setItem('ve5_emergency_scenarios', JSON.stringify(_emergencyScenarios));
+    localStorage.setItem('ve5_selected_emergency', JSON.stringify(_selectedScenarios));
+    renderEmergencyScenarios();
+    updateScenariosSummary();
+  };
+  // 先从 localStorage 快速渲染，再异步从服务端覆盖
+  try {
+    const saved = localStorage.getItem('ve5_emergency_scenarios');
+    const selected = localStorage.getItem('ve5_selected_emergency');
+    if (saved) _emergencyScenarios = JSON.parse(saved);
+    else _emergencyScenarios = [...DEFAULT_EMERGENCY_SCENARIOS];
+    if (selected) _selectedScenarios = JSON.parse(selected);
+  } catch(e) {
+    _emergencyScenarios = [...DEFAULT_EMERGENCY_SCENARIOS];
+    _selectedScenarios = [];
+  }
+  renderEmergencyScenarios();
+  updateScenariosSummary();
+  // 异步从服务端加载（覆盖 localStorage）
+  fetchJson(`${API_BASE}/api/v1/allocation/emergency`).then(data => {
+    if (data && !data.error) initFromData(data);
+  });
+}
+
+function persistEmergencyConfig() {
+  // 保存到服务端 userdata（持久化）+ localStorage（缓存）
+  const payload = { scenarios: _emergencyScenarios, selected: _selectedScenarios };
+  localStorage.setItem('ve5_emergency_scenarios', JSON.stringify(_emergencyScenarios));
+  localStorage.setItem('ve5_selected_emergency', JSON.stringify(_selectedScenarios));
+  ve5_fetch(`${API_BASE}/api/v1/allocation/emergency`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).catch(e => console.warn('应急配置持久化失败:', e));
+}
+
+function renderEmergencyScenarios() {
+  const listEl = document.getElementById('emergencyScenariosList');
+  if (!listEl) return;
+  const selectedIds = new Set(_selectedScenarios.map(s => s.id));
+
+  // 过滤掉"other"单独处理
+  const regularScenarios = _emergencyScenarios.filter(s => s.id !== 'other');
+  const otherScenario = _emergencyScenarios.find(s => s.id === 'other');
+
+  listEl.innerHTML = regularScenarios.map(s => {
+    const isSelected = selectedIds.has(s.id);
+    return `
+      <div onclick="toggleScenario('${s.id}')" style="padding:10px 12px; border-radius:10px; background:${isSelected ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.015)'}; border:1px solid ${isSelected ? 'rgba(99,102,241,0.25)' : 'var(--border-subtle)'}; cursor:pointer; transition:all 0.2s;">
+        <div style="display:flex; align-items:flex-start; gap:8px;">
+          <div style="font-size:18px;">${s.icon || '💡'}</div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span style="font-size:12px; font-weight:600; color:var(--text-primary);">${s.name}</span>
+              <span style="font-family:var(--mono); font-size:11px; color:${isSelected ? 'var(--accent-indigo)' : 'var(--text-muted)'}; white-space:nowrap; cursor:pointer;" onclick="event.stopPropagation();editScenarioAmount('${s.id}')" id="amount_${s.id}">¥${Math.round(s.amount).toLocaleString()}</span>
+            </div>
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px; line-height:1.4;">${s.description || ''}</div>
+            <div style="margin-top:4px;">
+              <span style="font-size:9px; padding:1px 6px; border-radius:6px; background:rgba(148,163,184,0.08); color:var(--text-muted);">${s.category || ''}</span>
+            </div>
+          </div>
+          ${isSelected ? '<div style="width:16px; height:16px; border-radius:50%; background:var(--accent-indigo); color:white; font-size:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">✓</div>' : ''}
+        </div>
+      </div>
+    `;
+  }).join('') + `
+    <!-- 自定义场景 -->
+    <div style="grid-column:1/-1; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.015); border:1px dashed var(--border-subtle);">
+      <div style="display:flex; align-items:flex-start; gap:8px;">
+        <div style="font-size:18px;">✏️</div>
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:6px;">
+            <input type="text" id="otherScenarioName" value="${otherScenario ? ve4_escapeHtml(otherScenario.name) : '自定义场景'}"
+                   style="flex:1; padding:4px 8px; border-radius:6px; border:1px solid var(--border-subtle); background:rgba(255,255,255,0.04); color:var(--text-primary); font-size:12px; font-weight:600; outline:none;"
+                   placeholder="输入场景名称" onchange="saveOtherScenario()" />
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <span style="font-size:11px; color:var(--text-muted);">金额</span>
+            <input type="number" id="otherScenarioAmount" value="${otherScenario ? otherScenario.amount : 0}"
+                   style="flex:1; padding:4px 8px; border-radius:6px; border:1px solid var(--border-subtle); background:rgba(255,255,255,0.04); color:var(--text-primary); font-size:12px; font-family:var(--mono); text-align:right; outline:none;"
+                   placeholder="0" onchange="saveOtherScenario()" />
+            <button onclick="toggleScenario('other')" style="padding:4px 12px; border-radius:6px; border:1px solid rgba(99,102,241,0.2); background:rgba(99,102,241,0.08); color:var(--accent-indigo); font-size:11px; cursor:pointer; font-weight:500; white-space:nowrap;">
+              ${selectedIds.has('other') ? '✓ 已选' : '添加场景'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleScenario(id) {
+  const scenario = _emergencyScenarios.find(s => s.id === id);
+  if (!scenario) return;
+  const idx = _selectedScenarios.findIndex(s => s.id === id);
+  if (idx >= 0) {
+    _selectedScenarios.splice(idx, 1);
+  } else {
+    // 如果是"other"自定义场景，从当前输入框读取值
+    if (id === 'other') {
+      const nameInput = document.getElementById('otherScenarioName');
+      const amountInput = document.getElementById('otherScenarioAmount');
+      if (nameInput) scenario.name = nameInput.value.trim() || '自定义场景';
+      if (amountInput) scenario.amount = parseFloat(amountInput.value) || 0;
+    }
+    _selectedScenarios.push({ ...scenario });
+  }
+  persistEmergencyConfig();
+  renderEmergencyScenarios();
+  updateScenariosSummary();
+  loadReport();  // 应急场景变更后刷新报告
+}
+
+function editScenarioAmount(id) {
+  const scenario = _emergencyScenarios.find(s => s.id === id);
+  if (!scenario) return;
+  const span = document.getElementById('amount_' + id);
+  if (!span) return;
+  // 替换为input
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.value = scenario.amount;
+  input.style.cssText = 'width:90px; padding:2px 6px; border-radius:4px; border:1px solid var(--accent-indigo); background:rgba(99,102,241,0.1); color:var(--text-primary); font-size:11px; font-family:var(--mono); text-align:right; outline:none;';
+  input.onblur = function() {
+    saveScenarioAmount(id, parseFloat(this.value) || 0);
+  };
+  input.onkeydown = function(e) {
+    if (e.key === 'Enter') { this.blur(); }
+    if (e.key === 'Escape') { this.value = scenario.amount; this.blur(); }
+  };
+  input.onclick = function(e) { e.stopPropagation(); };
+  span.innerHTML = '';
+  span.appendChild(input);
+  input.focus();
+  input.select();
+}
+
+function saveScenarioAmount(id, amount) {
+  const scenario = _emergencyScenarios.find(s => s.id === id);
+  if (!scenario) return;
+  scenario.amount = amount;
+  // 更新选中的场景
+  const sel = _selectedScenarios.find(s => s.id === id);
+  if (sel) sel.amount = amount;
+  persistEmergencyConfig();
+  renderEmergencyScenarios();
+  updateScenariosSummary();
+  loadReport();  // 金额变更后刷新报告
+}
+
+function saveOtherScenario() {
+  const nameInput = document.getElementById('otherScenarioName');
+  const amountInput = document.getElementById('otherScenarioAmount');
+  const other = _emergencyScenarios.find(s => s.id === 'other');
+  if (!other) return;
+  other.name = nameInput ? (nameInput.value.trim() || '自定义场景') : '自定义场景';
+  other.amount = amountInput ? (parseFloat(amountInput.value) || 0) : 0;
+  // 如果已选中，更新选中状态
+  const sel = _selectedScenarios.find(s => s.id === 'other');
+  if (sel) {
+    sel.name = other.name;
+    sel.amount = other.amount;
+  }
+  persistEmergencyConfig();
+  updateScenariosSummary();
+  loadReport();  // 自定义场景保存后刷新报告
+}
+
+function updateScenariosSummary() {
+  const countEl = document.getElementById('selectedScenarioCount');
+  const totalEl = document.getElementById('totalScenarioAmount');
+  const tagsEl = document.getElementById('scenariosTagList');
+  const tagsWrap = document.getElementById('selectedScenariosTags');
+
+  const total = _selectedScenarios.reduce((sum, s) => sum + (s.amount || 0), 0);
+  if (countEl) countEl.textContent = _selectedScenarios.length;
+  if (totalEl) totalEl.textContent = '¥' + Math.round(total).toLocaleString();
+
+  if (tagsEl && tagsWrap) {
+    if (_selectedScenarios.length > 0) {
+      tagsWrap.style.display = 'block';
+      tagsEl.innerHTML = _selectedScenarios.slice(0, 4).map(s =>
+        `<span style="padding:2px 8px; border-radius:10px; background:rgba(99,102,241,0.1); color:var(--accent-indigo); font-size:10px; border:1px solid rgba(99,102,241,0.15); display:inline-flex; align-items:center; gap:3px;">${s.icon || '💡'} ${s.name}</span>`
+      ).join('') + (_selectedScenarios.length > 4 ? `<span style="font-size:10px; color:var(--text-muted);">+${_selectedScenarios.length - 4}</span>` : '');
+    } else {
+      tagsWrap.style.display = 'none';
+    }
+  }
+
+  // 更新应急目标金额（如果有选择的场景）
+  if (total > 0) {
+    const targetEl = document.getElementById('coverageTarget');
+    if (targetEl) targetEl.textContent = '¥' + Math.round(total).toLocaleString();
+    // 重新计算覆盖率
+    const actualText = document.getElementById('coverageActual')?.textContent || '0';
+    const actual = parseFloat(actualText.replace(/[¥,]/g, '')) || 0;
+    if (actual > 0 && total > 0) {
+      const ratio = Math.min(actual / total, 1);
+      const pct = Math.round(ratio * 100);
+      document.getElementById('coveragePct').textContent = pct + '%';
+      document.getElementById('coverageRingFill').style.strokeDashoffset = 314 - (314 * ratio);
+      const statusEl = document.getElementById('coverageStatus');
+      if (statusEl) {
+        if (ratio >= 1) { statusEl.textContent = '已覆盖所有选定场景'; statusEl.style.color = 'var(--accent-emerald)'; }
+        else if (ratio >= 0.5) { statusEl.textContent = '部分覆盖，继续加油'; statusEl.style.color = 'var(--accent-amber)'; }
+        else { statusEl.textContent = '覆盖不足，需增加储备'; statusEl.style.color = 'var(--accent-rose)'; }
+      }
+    }
+  }
+}
+
+async function refreshEmergencyScenarios() {
+  const btn = document.getElementById('refreshScenariosBtn');
+  if (!btn) return;
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = '更新中...';
+
+  try {
+    const resp = await ve5_fetch(`${API_BASE}/api/v1/allocation/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        context_type: 'emergency',
+        message: '请生成应急资金场景列表'
+      })
+    });
+    const data = await resp.json();
+
+    // 尝试解析JSON
+    let scenarios = [];
+    const text = data.response || '';
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      try { scenarios = JSON.parse(jsonMatch[0]); } catch(e) {}
+    }
+
+    if (!scenarios.length) {
+      alert('LLM返回的场景格式解析失败，请稍后重试');
+      return;
+    }
+
+    // 添加ID和icon
+    const icons = {
+      '健康医疗': '🏥', '工作职业': '💼', '家庭生活': '🏠',
+      '人情往来': '🤝', '个人成长': '🌴', '意外事件': '🚗'
+    };
+    scenarios = scenarios.map((s, i) => ({
+      id: 'llm_' + Date.now() + '_' + i,
+      name: s.name,
+      amount: s.amount,
+      category: s.category,
+      description: s.description,
+      icon: icons[s.category] || '💡'
+    }));
+
+    _emergencyScenarios = scenarios;
+    persistEmergencyConfig();
+    renderEmergencyScenarios();
+  } catch(e) {
+    alert('更新失败：' + (e.message || '服务不可用'));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+function renderAdvices(advices) {
+  const list = document.getElementById('adviceList');
+  if (!advices || !advices.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">◈</div><div class="empty-state-text">当前配置符合战略框架</div></div>`;
+    return;
+  }
+  list.innerHTML = advices.map((a, i) => {
+    const pClass = a.level === 'warning' ? 'warning' : (a.level === 'caution' ? 'caution' : 'normal');
+    const meta = a.monthly_action > 0 ? `建议每月划拨 ¥${a.monthly_action.toLocaleString()} · 约 ${a.months_to_goal} 个月达成` : '';
+    return `
+      <div class="advice-item">
+        <div class="advice-priority ${pClass}">${i + 1}</div>
+        <div class="advice-content">
+          <div class="advice-dim">${a.dimension}</div>
+          <div class="advice-text">${a.message}</div>
+          ${meta ? `<div class="advice-meta">${meta}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ─── Goal Capture System ─── */
+// 目标持久化：localStorage（快速缓存）+ 服务端 userdata/goals.json（跨会话）
+
+function renderGoalSystem(data) {
+  const el = document.getElementById('goalSystem');
+  if (!el) return;
+
+  // 加载已选择的目标（含 estimated_cost, plan_text 等结构化字段）
+  let selectedGoals = [];
+  try { selectedGoals = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+
+  // 默认行星目标（长期人生目标）
+  const planets = [
+    { id: 'retire', name: '舒适退休', icon: '🪐', desc: '为退休后的生活储备足够资金', horizon: '20+年', color: '#6366f1', estimated_cost: 0 },
+    { id: 'child_edu', name: '子女教育', icon: '🌍', desc: '覆盖子女从基础教育到高等教育的费用', horizon: '10-20年', color: '#22d3ee', estimated_cost: 0 },
+    { id: 'house', name: '置业安居', icon: '🏠', desc: '购置自住房或改善型住房', horizon: '5-10年', color: '#34d399', estimated_cost: 0 },
+    { id: 'second_home', name: '第二居所', icon: '🏖️', desc: '度假房产或养老备用房', horizon: '15+年', color: '#f59e0b', estimated_cost: 0 },
+    { id: 'planet_custom', name: '其它', icon: '✏️', desc: '点击编辑你的自定义长期计划', horizon: '', color: '#94a3b8', estimated_cost: 0, is_custom: true },
+  ];
+
+  // 合并行星目标中的用户编辑数据
+  const enrichedPlanets = planets.map(p => {
+    const saved = selectedGoals.find(g => g.id === p.id);
+    return saved ? { ...p, ...saved } : p;
+  });
+
+  // 固定自定义小行星（不会被LLM替换）
+  const customAsteroids = [
+    { id: 'astro_custom_a', name: '自定义 A', icon: '📝', desc: '点击编辑你的短期计划', horizon: '', color: '#94a3b8', source: '自定义', estimated_cost: 0, is_custom: true },
+    { id: 'astro_custom_b', name: '自定义 B', icon: '📝', desc: '点击编辑你的短期计划', horizon: '', color: '#94a3b8', source: '自定义', estimated_cost: 0, is_custom: true },
+  ];
+
+  // 小行星目标（短期渴望，可从LLM更新）
+  let asteroids = [];
+  try { asteroids = JSON.parse(localStorage.getItem('ve5_asteroids') || '[]'); } catch(e) {}
+  // 过滤掉固定自定义项（它们可能被误存入）
+  asteroids = asteroids.filter(a => !a.is_custom);
+  if (!asteroids.length) {
+    asteroids = [
+      { id: 'astro_1', name: '学一门新乐器', icon: '🎸', desc: '用音乐填满下班后的时间', horizon: '3个月内', color: '#22d3ee', source: 'LLM推荐', estimated_cost: 3000 },
+      { id: 'astro_2', name: '参加一次马拉松', icon: '🏃', desc: '挑战自我完成全程马拉松', horizon: '6个月内', color: '#f59e0b', source: 'LLM推荐', estimated_cost: 2000 },
+      { id: 'astro_3', name: '精进厨艺计划', icon: '🍳', desc: '系统学习中外烹饪技巧', horizon: '1年内', color: '#34d399', source: 'LLM推荐', estimated_cost: 5000 },
+      { id: 'astro_4', name: '写一本小书', icon: '📖', desc: '把生活感悟整理成文字出版', horizon: '1年内', color: '#6366f1', source: 'LLM推荐', estimated_cost: 2000 },
+    ];
+  }
+
+  // 合并固定自定义项（放前面）
+  const allAsteroids = [...customAsteroids, ...asteroids.slice(0, 2)];
+
+  const selectedIds = new Set(selectedGoals.map(g => g.id));
+
+  const renderGoalCard = (g, isSelected, type) => {
+    const isCustom = g.is_custom;
+    const costStr = g.estimated_cost ? `¥${Math.round(g.estimated_cost).toLocaleString()}` : '待编辑';
+    const costColor = g.estimated_cost ? 'var(--accent-amber)' : 'var(--text-muted)';
+    const clickAction = isCustom
+      ? `event.stopPropagation(); editCustomGoal('${g.id}', '${type}')"`
+      : `toggleGoal('${g.id}', '${type}')`;
+    const borderStyle = isSelected
+      ? 'rgba(99,102,241,0.25)'
+      : isCustom ? 'rgba(148,163,184,0.15)' : 'var(--border-subtle)';
+    const bgStyle = isSelected
+      ? 'rgba(99,102,241,0.08)'
+      : isCustom ? 'rgba(148,163,184,0.03)' : 'rgba(255,255,255,0.015)';
+    const iconColor = isCustom ? 'var(--text-muted)' : '';
+    return `
+    <div style="padding:12px 14px; border-radius:10px; background:${bgStyle}; border:1px dashed ${borderStyle}; cursor:pointer; transition:all 0.2s;"
+         onclick="${clickAction}" onmouseenter="this.style.borderColor='rgba(99,102,241,0.2)'" onmouseleave="this.style.borderColor='${borderStyle}'">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="font-size:20px;${iconColor ? 'opacity:0.5;' : ''}">${g.icon}</div>
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-size:13px; font-weight:600; color:var(--text-primary);">${g.name}</span>
+            ${isSelected ? '<span style="font-size:10px; padding:1px 6px; border-radius:6px; background:rgba(99,102,241,0.15); color:var(--accent-indigo);">已捕获</span>' : ''}
+            ${g.source ? `<span style="font-size:9px; color:var(--text-muted);">${g.source}</span>` : ''}
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${g.desc}</div>
+        </div>
+        <div style="text-align:right; flex-shrink:0;">
+          <div style="font-size:12px; color:${costColor}; font-weight:500; font-family:var(--mono);">${costStr}</div>
+          <div style="font-size:10px; color:var(--text-muted);">${g.horizon || '未设定'}</div>
+        </div>
+      </div>
+    </div>`;
+  };
+
+  el.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+        <span style="font-size:13px; font-weight:600; color:var(--text-primary);">🪐 行星（长期目标）</span>
+        <span style="font-size:11px; color:var(--text-muted);">选择你的人生航向</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${enrichedPlanets.map(p => renderGoalCard(p, selectedIds.has(p.id), 'planet')).join('')}
+      </div>
+    </div>
+    <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(148,163,184,0.08);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:13px; font-weight:600; color:var(--text-primary);">☄️ 小行星（短期渴望）</span>
+          <span style="font-size:11px; color:var(--text-muted);">点击捕获你心动的那一刻</span>
+        </div>
+        <button onclick="refreshAsteroids(event)" style="padding:3px 10px; border-radius:6px; border:1px solid rgba(99,102,241,0.15); background:rgba(99,102,241,0.06); color:var(--accent-indigo); font-size:11px; cursor:pointer;">换一批</button>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+        ${allAsteroids.map(a => renderGoalCard(a, selectedIds.has(a.id), 'asteroid')).join('')}
+      </div>
+    </div>
+    ${selectedGoals.length > 0 ? `
+    <div style="margin-top:16px; padding-top:16px; border-top:1px solid rgba(148,163,184,0.08);">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <div style="font-size:12px; font-weight:600; color:var(--text-primary);">已捕获目标</div>
+        <div style="display:flex; gap:6px;">
+          <button onclick="estimateGoalCosts()" style="padding:3px 10px; border-radius:6px; border:1px solid rgba(245,158,11,0.2); background:rgba(245,158,11,0.08); color:var(--accent-amber); font-size:11px; cursor:pointer; font-weight:500;">
+            🧮 AI 估算金额
+          </button>
+          <button onclick="openGoalAnalysisChat()" style="padding:3px 10px; border-radius:6px; border:1px solid rgba(34,211,238,0.2); background:rgba(34,211,238,0.08); color:var(--accent-cyan); font-size:11px; cursor:pointer; font-weight:500;">
+            💬 AI 规划路径
+          </button>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        ${selectedGoals.map(g => {
+          const cost = g.estimated_cost ? `¥${Math.round(g.estimated_cost).toLocaleString()}` : '待估算';
+          return `<div style="display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:8px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.12);">
+            <span style="font-size:16px;">${g.icon}</span>
+            <span style="flex:1; font-size:12px; color:var(--text-primary); font-weight:500;">${g.name}</span>
+            <span style="font-size:11px; color:var(--text-muted);">${g.horizon || ''}</span>
+            <span style="font-size:11px; color:${g.estimated_cost ? 'var(--accent-amber)' : 'var(--text-muted)'}; font-family:var(--mono);">${cost}</span>
+            <button onclick="event.stopPropagation(); editGoalAmount('${g.id}')" style="padding:2px 8px; border-radius:4px; border:1px solid rgba(148,163,184,0.1); background:none; color:var(--text-muted); font-size:10px; cursor:pointer;" title="编辑金额">✏️</button>
+            <button onclick="event.stopPropagation(); removeGoal('${g.id}')" style="padding:2px 6px; border-radius:4px; border:none; background:none; color:var(--text-muted); font-size:12px; cursor:pointer;" title="移除">✕</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    ` : ''}
+  `;
+}
+
+function toggleGoal(goalId, type) {
+  let selected = [];
+  try { selected = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+  const idx = selected.findIndex(g => g.id === goalId);
+  if (idx >= 0) {
+    // 取消捕获
+    selected.splice(idx, 1);
+  } else {
+    // 查找目标完整信息
+    const allPlanets = [
+      { id: 'retire', name: '舒适退休', icon: '🪐', desc: '为退休后的生活储备足够资金', horizon: '20+年', color: '#6366f1' },
+      { id: 'child_edu', name: '子女教育', icon: '🌍', desc: '覆盖子女从基础教育到高等教育的费用', horizon: '10-20年', color: '#22d3ee' },
+      { id: 'house', name: '置业安居', icon: '🏠', desc: '购置自住房或改善型住房', horizon: '5-10年', color: '#34d399' },
+      { id: 'second_home', name: '第二居所', icon: '🏖️', desc: '度假房产或养老备用房', horizon: '15+年', color: '#f59e0b' },
+    ];
+    let asteroids = [];
+    try { asteroids = JSON.parse(localStorage.getItem('ve5_asteroids') || '[]'); } catch(e) {}
+    const found = allPlanets.find(g => g.id === goalId) || asteroids.find(g => g.id === goalId);
+    if (found) {
+      // 确保有 estimated_cost 字段
+      if (!found.estimated_cost) found.estimated_cost = 0;
+      selected.push({ ...found, captured_at: new Date().toISOString() });
+    }
+  }
+  localStorage.setItem('ve5_selected_goals', JSON.stringify(selected));
+  persistGoalsToServer(selected);
+  const reportData = window._lastReportData;
+  if (reportData) renderGoalSystem(reportData);
+}
+
+function removeGoal(goalId) {
+  let selected = [];
+  try { selected = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+  selected = selected.filter(g => g.id !== goalId);
+  localStorage.setItem('ve5_selected_goals', JSON.stringify(selected));
+  persistGoalsToServer(selected);
+  const reportData = window._lastReportData;
+  if (reportData) renderGoalSystem(reportData);
+}
+
+function editGoalAmount(goalId) {
+  let selected = [];
+  try { selected = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+  const goal = selected.find(g => g.id === goalId);
+  if (!goal) return;
+
+  // 创建内联编辑弹窗
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:1001;';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="width:320px; padding:20px; border-radius:14px; background:var(--bg-elevated); border:1px solid var(--border-subtle); box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="font-size:14px; font-weight:600; color:var(--text-primary); margin-bottom:16px;">${goal.icon} 编辑目标：${goal.name}</div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">预估金额（元）</label>
+        <input id="editGoalCostInput" type="number" value="${goal.estimated_cost || ''}" placeholder="填写预估花费" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-inset); color:var(--text-primary); font-size:14px; font-family:var(--mono); outline:none;" />
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">时间范围</label>
+        <input id="editGoalHorizonInput" type="text" value="${goal.horizon || ''}" placeholder="如：3年内" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-inset); color:var(--text-primary); font-size:13px; outline:none;" />
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:6px 16px; border-radius:8px; border:1px solid var(--border-subtle); background:none; color:var(--text-muted); font-size:12px; cursor:pointer;">取消</button>
+        <button onclick="saveGoalEdit('${goalId}')" style="padding:6px 16px; border-radius:8px; border:none; background:linear-gradient(135deg,var(--accent-indigo),var(--accent-cyan)); color:white; font-size:12px; font-weight:600; cursor:pointer;">保存</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('editGoalCostInput').focus(), 100);
+}
+
+function saveGoalEdit(goalId) {
+  let selected = [];
+  try { selected = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+  const goal = selected.find(g => g.id === goalId);
+  if (!goal) return;
+
+  const costInput = document.getElementById('editGoalCostInput');
+  const horizonInput = document.getElementById('editGoalHorizonInput');
+  if (costInput) goal.estimated_cost = parseFloat(costInput.value) || 0;
+  if (horizonInput) goal.horizon = horizonInput.value.trim() || goal.horizon;
+  goal.edited_at = new Date().toISOString();
+
+  localStorage.setItem('ve5_selected_goals', JSON.stringify(selected));
+  persistGoalsToServer(selected);
+
+  // 关闭弹窗
+  const overlay = document.querySelector('div[style*="z-index:1001"]');
+  if (overlay) overlay.remove();
+
+  const reportData = window._lastReportData;
+  if (reportData) renderGoalSystem(reportData);
+}
+
+async function estimateGoalCosts() {
+  let selected = [];
+  try { selected = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+  const needEstimate = selected.filter(g => !g.estimated_cost || g.estimated_cost === 0);
+  if (!needEstimate.length) {
+    alert('所有目标已有金额估算');
+    return;
+  }
+  try {
+    const resp = await ve5_fetch(`${API_BASE}/api/v1/allocation/goals/estimate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ goals: needEstimate })
+    });
+    const data = await resp.json();
+    if (data.status === 'success' && data.estimates) {
+      // 更新对应目标的 estimated_cost
+      for (const est of data.estimates) {
+        const goal = selected.find(g => g.id === est.id);
+        if (goal) goal.estimated_cost = est.estimated_cost;
+      }
+      localStorage.setItem('ve5_selected_goals', JSON.stringify(selected));
+      persistGoalsToServer(selected);
+      const reportData = window._lastReportData;
+      if (reportData) renderGoalSystem(reportData);
+    } else {
+      alert('估算失败：' + (data.error || '未知错误'));
+    }
+  } catch(e) {
+    alert('请求失败：' + e.message);
+  }
+}
+
+function editCustomGoal(goalId, type) {
+  // 查找当前数据（已捕获 > 默认模板）
+  let selected = [];
+  try { selected = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+  let goal = selected.find(g => g.id === goalId);
+
+  // 如果未捕获过，从默认模板获取
+  if (!goal) {
+    const allDefaults = [
+      { id: 'planet_custom', name: '其它', icon: '✏️', desc: '', horizon: '', color: '#94a3b8', is_custom: true },
+      { id: 'astro_custom_a', name: '自定义 A', icon: '📝', desc: '', horizon: '', color: '#94a3b8', source: '自定义', is_custom: true },
+      { id: 'astro_custom_b', name: '自定义 B', icon: '📝', desc: '', horizon: '', color: '#94a3b8', source: '自定义', is_custom: true },
+    ];
+    goal = allDefaults.find(g => g.id === goalId) || { id: goalId, name: '自定义', icon: '📝', desc: '', horizon: '', estimated_cost: 0, is_custom: true };
+  }
+
+  const label = type === 'planet' ? '长期计划' : '短期计划';
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:1001;';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="width:360px; padding:20px; border-radius:14px; background:var(--bg-elevated); border:1px solid var(--border-subtle); box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="font-size:14px; font-weight:600; color:var(--text-primary); margin-bottom:16px;">编辑${label}</div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">名称</label>
+        <input id="customGoalName" type="text" value="${goal.name || ''}" placeholder="如：环球旅行" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-inset); color:var(--text-primary); font-size:13px; outline:none;" />
+      </div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">简介</label>
+        <textarea id="customGoalDesc" rows="2" placeholder="简单描述这个计划" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-inset); color:var(--text-primary); font-size:12px; outline:none; resize:vertical;">${goal.desc || ''}</textarea>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <div style="flex:1;">
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">资金计划（元）</label>
+          <input id="customGoalCost" type="number" value="${goal.estimated_cost || ''}" placeholder="如：50000" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-inset); color:var(--text-primary); font-size:13px; font-family:var(--mono); outline:none;" />
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:3px;">计划时间</label>
+          <input id="customGoalHorizon" type="text" value="${goal.horizon || ''}" placeholder="如：3年内" style="width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border-subtle); background:var(--bg-inset); color:var(--text-primary); font-size:13px; outline:none;" />
+        </div>
+      </div>
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+        <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:6px 16px; border-radius:8px; border:1px solid var(--border-subtle); background:none; color:var(--text-muted); font-size:12px; cursor:pointer;">取消</button>
+        <button onclick="saveCustomGoal('${goalId}', '${type}')" style="padding:6px 16px; border-radius:8px; border:none; background:linear-gradient(135deg,var(--accent-indigo),var(--accent-cyan)); color:white; font-size:12px; font-weight:600; cursor:pointer;">保存并捕获</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  setTimeout(() => document.getElementById('customGoalName').focus(), 100);
+}
+
+function saveCustomGoal(goalId, type) {
+  const name = document.getElementById('customGoalName').value.trim();
+  const desc = document.getElementById('customGoalDesc').value.trim();
+  const cost = parseFloat(document.getElementById('customGoalCost').value) || 0;
+  const horizon = document.getElementById('customGoalHorizon').value.trim();
+
+  if (!name) { alert('请填写名称'); return; }
+
+  let selected = [];
+  try { selected = JSON.parse(localStorage.getItem('ve5_selected_goals') || '[]'); } catch(e) {}
+
+  const existing = selected.findIndex(g => g.id === goalId);
+  const goalData = {
+    id: goalId, name, icon: type === 'planet' ? '🎯' : '📌',
+    desc: desc || name, horizon, estimated_cost: cost,
+    color: type === 'planet' ? '#94a3b8' : '#94a3b8',
+    is_custom: true,
+    source: '自定义',
+    captured_at: new Date().toISOString(),
+    edited_at: new Date().toISOString(),
+  };
+
+  if (existing >= 0) {
+    selected[existing] = { ...selected[existing], ...goalData };
+  } else {
+    selected.push(goalData);
+  }
+
+  localStorage.setItem('ve5_selected_goals', JSON.stringify(selected));
+  persistGoalsToServer(selected);
+
+  // 关闭弹窗并刷新
+  const overlay = document.querySelector('div[style*="z-index:1001"]');
+  if (overlay) overlay.remove();
+  const reportData = window._lastReportData;
+  if (reportData) renderGoalSystem(reportData);
+}
+
+function persistGoalsToServer(goals) {
+  ve5_fetch(`${API_BASE}/api/v1/allocation/goals/save`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ goals: goals })
+  }).catch(e => console.warn('目标持久化失败:', e));
+}
+
+async function loadGoalsFromServer() {
+  try {
+    const data = await fetchJson(`${API_BASE}/api/v1/allocation/goals`);
+    if (data && data.goals && data.goals.length) {
+      localStorage.setItem('ve5_selected_goals', JSON.stringify(data.goals));
+      const reportData = window._lastReportData;
+      if (reportData) renderGoalSystem(reportData);
+    }
+  } catch(e) {}
+}
+
+async function refreshAsteroids() {
+  const btn = event ? event.target : document.querySelector('[onclick*="refreshAsteroids"]');
+  if (btn) { btn.disabled = true; btn.textContent = '正在生成...'; }
+  try {
+    const resp = await ve5_fetch(`${API_BASE}/api/v1/allocation/goals/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const data = await resp.json();
+    if (data.status === 'success' && data.goals && data.goals.length) {
+      // 滚动替换：新的LLM条放前面，剔除最旧的，始终只存LLM生成的（不含自定义）
+      let existing = [];
+      try { existing = JSON.parse(localStorage.getItem('ve5_asteroids') || '[]'); } catch(e) {}
+      existing = existing.filter(a => !a.is_custom);
+      // 新条放前面，保留旧条，取前2条（配合2个固定自定义 = 共4条）
+      let merged = [...data.goals, ...existing].slice(0, 2);
+      // 如果不足2条，用默认填充补齐
+      if (merged.length < 2) {
+        const defaults = [
+          { id: 'astro_def_1', name: '学一门新乐器', icon: '🎸', desc: '用音乐填满下班后的时间', horizon: '3个月内', color: '#22d3ee', source: '默认', estimated_cost: 3000 },
+          { id: 'astro_def_2', name: '参加一次马拉松', icon: '🏃', desc: '挑战自我完成全程马拉松', horizon: '6个月内', color: '#f59e0b', source: '默认', estimated_cost: 2000 },
+          { id: 'astro_def_3', name: '精进厨艺计划', icon: '🍳', desc: '系统学习中外烹饪技巧', horizon: '1年内', color: '#34d399', source: '默认', estimated_cost: 5000 },
+          { id: 'astro_def_4', name: '写一本小书', icon: '📖', desc: '把生活感悟整理成文字出版', horizon: '1年内', color: '#6366f1', source: '默认', estimated_cost: 2000 },
+        ];
+        const existingIds = new Set(merged.map(g => g.name));
+        for (const d of defaults) {
+          if (merged.length >= 2) break;
+          if (!existingIds.has(d.name)) merged.push(d);
+        }
+      }
+      localStorage.setItem('ve5_asteroids', JSON.stringify(merged));
+      const reportData = window._lastReportData;
+      if (reportData) renderGoalSystem(reportData);
+    } else {
+      console.warn('目标生成返回异常:', data);
+      if (btn) { btn.textContent = '生成异常，点击重试'; btn.disabled = false; }
+      return;
+    }
+  } catch(e) {
+    console.warn('目标生成请求失败:', e);
+    if (btn) { btn.textContent = '网络失败，点击重试'; btn.disabled = false; }
+    return;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '换一批'; }
+}
+
+/* ─── Potential Space (LLM-driven) ─── */
+function renderPotentialSpaceFromCache() {
+  const content = document.getElementById('potentialSpaceContent');
+  const cacheNote = document.getElementById('potentialCacheNote');
+  const cached = localStorage.getItem('ve5_potential_analysis');
+  if (cached) {
+    try {
+      const data = JSON.parse(cached);
+      content.innerHTML = `<div style="font-size:12px; color:var(--text-secondary); line-height:1.7;">${ve4_escapeHtml(data.text).replace(/\n/g, '<br>')}</div>`;
+      if (data.timestamp) {
+        const d = new Date(data.timestamp);
+        cacheNote.style.display = 'block';
+        cacheNote.innerHTML = `基于 ${d.toLocaleDateString()} 缓存 · <a href="#" onclick="clearPotentialCache(); return false;" style="color:var(--accent-indigo);">清除缓存</a>`;
+      }
+    } catch(e) { localStorage.removeItem('ve5_potential_analysis'); }
+  }
+}
+
+async function triggerPotentialAnalysis() {
+  const btn = document.getElementById('potentialBtn');
+  const content = document.getElementById('potentialSpaceContent');
+  btn.disabled = true;
+  btn.textContent = '分析中...';
+  content.innerHTML = `<div style="text-align:center; padding:20px 0; color:var(--text-muted);"><div style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.1);border-top-color:var(--accent-indigo);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 8px;"></div>正在分析你的配置潜力...</div>`;
+
+  try {
+    // 获取当前资产配置数据
+    const reportData = window._lastReportData;
+    const holdings = await fetchWithOfflineFallback(`${API_BASE}/api/v1/asset/holdings`, null);
+
+    // 构建 prompt
+    const framework = reportData?.framework || {};
+    const actual = reportData?.actual || {};
+    const prompt = `基于以下用户的资产配置数据，生成一段"潜力空间"分析：
+
+【当前配置】
+- 流动类: ${((actual.liquid_pct || 0) * 100).toFixed(1)}%
+- 稳健类: ${((actual.stable_pct || 0) * 100).toFixed(1)}%
+- 进取类: ${((actual.aggressive_pct || 0) * 100).toFixed(1)}%
+- 保障类: ${((actual.protection_pct || 0) * 100).toFixed(1)}%
+
+【战略基准】
+- 流动类: ${((framework.liquid_pct || 0) * 100).toFixed(1)}%
+- 稳健类: ${((framework.stable_pct || 0) * 100).toFixed(1)}%
+- 进取类: ${((framework.aggressive_pct || 0) * 100).toFixed(1)}%
+
+【总资产】约 ¥${(reportData?.total_assets || 0).toLocaleString()}
+
+请用温暖、有说服力的语言，分析：
+1. 用户当前的配置有哪些"潜力空间"——即如果做出某些调整，会带来什么积极变化
+2. 为什么这些调整会很有说服力（用具体数字和比喻）
+3. 不要给出评分或等级，而是讲一个关于"如果这样做，你的财务未来会有何不同"的故事
+4. 保持简洁，200字以内，用中文`;
+
+    // 调用LLM API
+    const resp = await ve5_fetch(`${API_BASE}/api/v1/ai/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: prompt, stream: false })
+    });
+    const result = await resp.json();
+    const text = result.response || result.message || result.content || '分析完成，暂无详细解读。';
+
+    // 缓存结果
+    localStorage.setItem('ve5_potential_analysis', JSON.stringify({ text, timestamp: new Date().toISOString() }));
+    renderPotentialSpaceFromCache();
+  } catch(e) {
+    content.innerHTML = `<div style="text-align:center; padding:16px 0; color:var(--accent-rose); font-size:12px;">分析失败：${e.message || 'LLM服务不可用'}<br><span style="font-size:11px; color:var(--text-muted);">请检查AI配置后重试</span></div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '重新生成潜力分析';
+  }
+}
+
+function clearPotentialCache() {
+  localStorage.removeItem('ve5_potential_analysis');
+  const content = document.getElementById('potentialSpaceContent');
+  const cacheNote = document.getElementById('potentialCacheNote');
+  content.innerHTML = `<div style="text-align:center; padding:16px 0; color:var(--text-muted); font-size:12px;"><div style="font-size:24px; margin-bottom:8px; opacity:0.3;">✦</div><div>潜力空间分析已清除</div><div style="margin-top:4px; font-size:11px;">点击下方按钮重新生成</div></div>`;
+  cacheNote.style.display = 'none';
+  const btn = document.getElementById('potentialBtn');
+  if (btn) btn.textContent = '生成潜力分析';
+}
+
+/* ─── Refresh ─── */
+// loadReport 不再自动轮询；仅以下情况触发：
+// 1. 页面首次加载（从快照或API获取一次）
+// 2. 蓝牙文件同步成功后（通过 sessionStorage 信号）
+// 3. 用户主动操作（应急场景变更、分类保存等）
+let _reportLoading = false;
+async function refreshAll(opts = {}) {
+  const { forceReport = false } = opts;
+  // 快速路径：先从快照渲染（瞬间完成），再异步刷新API数据
+  _renderFromSnapshots();
+  // 慢路径：从API获取最新数据
+  if (!forceReport && _reportLoading) {
+    await Promise.all([loadAllocationDetail(), loadUnclassified(), loadHoldings()]);
+    return;
+  }
+  _reportLoading = true;
+  try {
+    await Promise.all([loadAllocationDetail(), loadUnclassified(), loadHoldings(), loadReport()]);
+  } finally {
+    _reportLoading = false;
+  }
+}
+
+// 快速渲染：从本地快照文件直接读取并渲染（零网络延迟）
+async function _renderFromSnapshots() {
+  try {
+    const [detailData, reportData] = await Promise.all([
+      fetch('../userdata/snapshots/allocation_detail.json').then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('../userdata/snapshots/allocation_report.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    if (detailData && !detailData.error) {
+      const groups = detailData.groups || [];
+      const totalClassified = detailData.total_classified || 0;
+      const liquidBreakdown = detailData.liquid_breakdown || {};
+      drawPie(groups, totalClassified);
+      const legend = document.getElementById('pieLegend');
+      if (legend) {
+        legend.innerHTML = '';
+        groups.forEach(g => {
+          const item = document.createElement('div');
+          item.className = 'pie-legend-item';
+          item.style.cursor = g.key === 'liquid' ? 'pointer' : 'default';
+          item.title = g.key === 'liquid' ? '点击查看流动类展开' : '';
+          item.innerHTML = `<div class="pie-dot" style="background:${g.color}"></div>${g.label} <span style="font-size:11px;color:var(--text-muted);">(${g.count}个)</span><span class="pie-value">¥${Math.round(g.total_value).toLocaleString()}</span>`;
+          if (g.key === 'liquid') { item.onclick = () => toggleLiquidExpand(); }
+          legend.appendChild(item);
+        });
+      }
+      const totalEl = document.getElementById('classifiedTotal');
+      if (totalEl) totalEl.textContent = '¥' + Math.round(totalClassified).toLocaleString();
+      renderLiquidExpand(liquidBreakdown);
+    }
+    if (reportData && !reportData.error) {
+      window._lastReportData = reportData;
+      renderComparison(reportData);
+      renderLiquidity(reportData.liquidity);
+      renderProtectionManagement(reportData.protection_management);
+      renderAdvices(reportData.advices);
+      renderGoalSystem(reportData);
+      renderPotentialSpaceFromCache();
+    }
+  } catch(e) { /* 快照加载失败，等API */ }
+}
+
+// 监听蓝牙同步成功信号（从 index.html 通过 sessionStorage 传递）
+window.addEventListener('storage', (e) => {
+  if (e.key === 've5_sync_complete' && e.newValue === '1') {
+    console.info('[VE4] 检测到蓝牙同步完成信号，刷新资产配置报告');
+    sessionStorage.removeItem('ve5_sync_complete');
+    refreshAll({ forceReport: true });
+  }
+});
+// 同窗口内的同步信号（sessionStorage 不触发 storage 事件，用自定义事件）
+window.addEventListener('ve5_sync_complete', () => {
+  console.info('[VE4] 收到同步完成事件，刷新资产配置报告');
+  refreshAll({ forceReport: true });
+});
+
+/* ─── VE4 服务可用性检测 + 一键启动 ─── */
+let _ve4ApiOnline = false;
+async function _ve4CheckApi() {
+  try {
+    const r = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(3000) });
+    _ve4ApiOnline = r.ok;
+  } catch { _ve4ApiOnline = false; }
+}
+function _ve4ShowBanner() {
+  if (_ve4ApiOnline || document.getElementById('ve4OfflineBanner')) return;
+  const b = document.createElement('div');
+  b.id = 've4OfflineBanner';
+  b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 20px;background:linear-gradient(90deg,rgba(244,63,94,0.12),rgba(99,102,241,0.08));border-bottom:1px solid rgba(244,63,94,0.2);backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center;gap:14px;font-size:13px;';
+  b.innerHTML = '<span style="color:var(--accent-rose);font-weight:700;">API 未连接</span><span style="color:var(--text-secondary);">VE4 服务未启动</span><button id="ve4BtnStart" onclick="_ve4Launch()" style="padding:7px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;font-size:13px;font-weight:600;cursor:pointer;">一键启动</button><button onclick="this.parentElement.remove()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border-subtle);background:transparent;color:var(--text-muted);font-size:12px;cursor:pointer;">忽略</button>';
+  document.body.prepend(b);
+}
+async function _ve4Launch() {
+  const b = document.getElementById('ve4OfflineBanner'), btn = document.getElementById('ve4BtnStart');
+  if (btn) { btn.disabled = true; btn.textContent = '启动中...'; btn.style.opacity = '0.6'; }
+  try { const w = window.open('ve4://start', '_blank', 'width=1,height=1'); if (w) setTimeout(() => { try { w.close(); } catch(e){} }, 3000); } catch(e) {}
+  if (btn) btn.textContent = '启动中...';
+  for (let i = 1; i <= 20; i++) {
+    await new Promise(r => setTimeout(r, 1000));
+    if (btn) btn.textContent = `启动中... ${20 - i}s`;
+  }
+  window.location.href = '/pwa/asset-allocation.html';
+}
+
+window.addEventListener('load', () => {
+  _ve4CheckApi().then(() => _ve4ShowBanner());
+  refreshAll();  // 仅首次加载一次，不再 setInterval
+  loadGoalsFromServer();  // 从服务端恢复已捕获目标
+
+  // ─── 全局防缓存：拦截所有页面内 <a> 跳转，自动附加时间戳 ───
+  document.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href');
+    if (href && href.endsWith('.html') && !href.includes('_t=')) {
+      a.addEventListener('click', function(e) {
+        e.preventDefault();
+        const sep = href.includes('?') ? '&' : '?';
+        window.location.href = href + sep + '_t=' + Date.now();
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>
